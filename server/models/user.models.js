@@ -1,6 +1,4 @@
 import mongoose from "mongoose";
-import { ref } from "pdfkit";
-
 const userSchema = new mongoose.Schema({
     name:{
         type:String,

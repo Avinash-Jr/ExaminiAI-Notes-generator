@@ -1,7 +1,4 @@
-/* eslint-disable no-empty */
-/* eslint-disable no-unused-vars */
 
-import React from "react";
 import { motion } from "motion/react";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
@@ -13,29 +10,21 @@ import {serverUrl} from "../App.jsx"
 
 
 function Auth() {
-    const handleGoogleAuth = async ()=>{
-      try {
-        const response = await signInWithPopup(auth, provider )
-        // signInWithPopup is correct not signInWithPopUp
-        // console.log(response) // to show the response whether we are getting the proper response or not
-        const User = response.user
-        const name = User.displayName
-        const email = User.email
-        const result = await axios.post(serverUrl + "/api/auth/google", {name, email, withCredentials:true})
-        console.log(result.data)
-        const emailVerified = User.emailVerified
-        try {
-          if(emailVerified){
-            console.log("Email is already Verified by Google", emailVerified)
-          }
-        } catch (error) {
-          console.error("Email is not verified get a Verified Email", error)
-        }
-      
-      } catch (error) {
-          console.error("Google Authentication Error:", error);
-      }
+  const handleGoogleAuth = async () => {
+    try {
+      const response = await signInWithPopup(auth, provider);
+      const User = response.user;
+      const name = User.displayName;
+      const email = User.email;
+      console.log("✅ Firebase User:", name, email);
+  
+      const result = await axios.post(`${serverUrl}/api/user/googleAuth`, {name, email},{withCredentials: true});
+  
+      console.log("✅ Backend response:", result.data);
+    } catch (error) {  
+      console.log("❌ Google Authentication Error:", error);
     }
+  };
 
   return (
     <div className="min-h-screen overflow-hidden bg-amber-100 text-black px-6 sm:px-8">

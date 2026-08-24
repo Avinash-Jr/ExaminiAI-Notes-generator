@@ -1,32 +1,64 @@
-import UserModel from "../models/user.models.js"
-import { getToken } from "../utils/token.js"
-
+import UserModel from "../models/user.models.js";
+import { getToken } from "../utils/token.js";
 
 export const googleAuth = async (req, res) => {
     try {
-        const {email, name} =req.body
-        let user = await UserModel.findOne({email})
-        if(!user){
+        const { email, name } = req.body;
+
+        // Check whether user already exists
+        let user = await UserModel.findOne({ email });
+
+        // Create user if not found
+        if (!user) {
             user = await UserModel.create({
-                name , email // These fields are already written in out UserSchema that's why we are able to use these fields
-            })
+                name,
+                email,
+            });
         }
-        let token = await getToken(user._id)
-        res.cookie("Token", token,{ httpOnly:true, secure:true, samesite:"strict", maxAge:7 * 24 * 60* 60* 1000 })
-        // maxAge:7 * 24 * 60* 60* 1000 }) = 7days
-        return res.status(200).json({message:"User", user})
-    } catch (error) {
-        return res.status(500).json({message:`GoogleSignUp Error ${error}`})
-    }    
-}
 
+        // Generate JWT token
+        const token = await getToken(user._id);
 
-export const logOut = async(req, res)=>{
-    try {
-        await res.clearCookie("token")
-        return res.status(200).json({message:`User has successfully logged out`})
+        // Store token in cookie
+        res.cookie("Token", token, {
+            httpOnly: true,
+            secure: false, // false for localhost, true in production (HTTPS)
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
+        return res.status(200).json({
+            message: "User authenticated successfully",
+            user,
+        });
     } catch (error) {
-        return res.status(500).json({message:`LogOut Error ${error}`})
-        
+        console.error("GoogleSignUp Error:", error);
+
+        return res.status(500).json({
+            message: "GoogleSignUp Error",
+            error: error.message,
+        });
     }
-}
+};
+
+export const logOut = async (req, res) => {
+    try {
+        // Cookie name must match the cookie created above
+        res.clearCookie("Token", {
+            httpOnly: true,
+            secure: false,
+            sameSite: "strict",
+        });
+
+        return res.status(200).json({
+            message: "User has successfully logged out",
+        });
+    } catch (error) {
+        console.error("LogOut Error:", error);
+
+        return res.status(500).json({
+            message: "LogOut Error",
+            error: error.message,
+        });
+    }
+};

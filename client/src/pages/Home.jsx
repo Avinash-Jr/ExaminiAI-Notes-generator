@@ -1,8 +1,13 @@
-import React from 'react'
+import Navbar from '../components/Navbar.jsx'
 
 export const Home = () => {
   return (
-    <div>Home Page </div>
+    <div className='min-h-screen overflow-hidden bg-white text-black'>Home Page 
+    <Navbar>
+
+    </Navbar>
+
+    </div>
   )
 }
 

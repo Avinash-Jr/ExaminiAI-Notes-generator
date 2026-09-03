@@ -1,1 +1,137 @@
 @import "tailwindcss";
+
+/* ==========================================================================
+   ExaminAI design tokens
+
+   Additive only: no stock Tailwind scale is overridden, so existing pages
+   (Home, Auth, Navbar) render exactly as before. New pages use the semantic
+   names below.
+
+   Palette: white canvas and neutral greys inherited from Home, dark panels
+   inherited from Navbar/Footer, and amber as the one accent — the same amber
+   already carrying the "ExamNotes AI" wordmark.
+   ========================================================================== */
+
+@theme {
+  /* Text on light surfaces */
+  --color-ink: #16161a;
+  --color-ink-2: #4a4a55;
+  --color-ink-3: #6f6f7b;
+
+  /* Light surfaces and hairlines */
+  --color-sheet: #ffffff;
+  --color-band: #fafaf9;
+  --color-line: #e6e6e9;
+  --color-line-firm: #d2d2d8;
+
+  /* Dark panel, matching the navbar and footer material */
+  --color-panel: #0b0b0c;
+  --color-panel-2: #16161a;
+
+  /* The single accent. `brand` is dark enough for body text on white;
+     `brand-lit` is the amber-100 tint used on dark panels. */
+  --color-brand: #a45608;
+  --color-brand-deep: #7c3f05;
+  --color-brand-tint: #fdf6ec;
+  --color-brand-lit: #fef3c7;
+
+  /* Long-form reading face. Interface type stays on the app's sans stack. */
+  --font-read: "Source Serif 4", ui-serif, Georgia, Cambria, serif;
+
+  /* Reading scale */
+  --text-fine: 0.8125rem;
+  --text-fine--line-height: 1.45;
+  --text-read: 1.0625rem;
+  --text-read--line-height: 1.75;
+
+  /* Structure. Panels match the app's rounded-2xl; nested chips sit tighter. */
+  --radius-panel: 1rem;
+  --radius-chip: 0.625rem;
+
+  /* Width of the rail that holds locators, left of the hairline */
+  --spacing-rail: 5.5rem;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 7rem;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  /* Numerals line up in clause numbers, dates and times */
+  time,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Long-form copy: styled once here rather than repeating utilities on every
+   paragraph of documents whose length we do not control. */
+@layer components {
+  .doc-prose {
+    color: var(--color-ink-2);
+    font-family: var(--font-read);
+    font-size: var(--text-read);
+    line-height: 1.75;
+  }
+
+  .doc-prose > * + * {
+    margin-top: 1.05em;
+  }
+
+  .doc-prose strong {
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  .doc-prose a {
+    color: var(--color-brand);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  .doc-prose a:hover {
+    color: var(--color-brand-deep);
+  }
+
+  .doc-prose ul {
+    list-style: none;
+    padding-left: 1.15rem;
+  }
+
+  .doc-prose li {
+    position: relative;
+    margin-top: 0.5em;
+  }
+
+  /* A short rule instead of a bullet, echoing the rail hairline */
+  .doc-prose li::before {
+    content: "";
+    position: absolute;
+    top: 0.78em;
+    left: -1.15rem;
+    width: 0.45rem;
+    height: 1px;
+    background-color: var(--color-brand);
+  }
+}

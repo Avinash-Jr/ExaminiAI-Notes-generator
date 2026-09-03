@@ -14,9 +14,6 @@ function Navbar() {
   const [showCredits, setShowCredits] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
-  const [setShowHistory] = useState(false);
-  const [ setShowSettings] = useState(false);
-
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -166,7 +163,7 @@ function Navbar() {
                 </p>
 
                 <button
-                  onClick={() => setShowCredits(false)}
+                  onClick={() => {setShowCredits(false); navigate("/pricing")}}
                   className="
                     w-full py-4 rounded-lg
                     bg-linear-to-br from-white to-pink-300/90
@@ -231,27 +228,11 @@ function Navbar() {
                     p-4 text-white
                   "
                 >
-                  <MenuItem
-                    text="History"
-                    onClick={() => {
-                      setShowHistory(true);
-                      setShowProfile(false);
-                    }}
-                  />
+                  <MenuItem text="History" onClick={() => {setShowProfile(false); navigate("/history")}}/>
 
-                  <MenuItem
-                    text="Settings"
-                    onClick={() => {
-                      setShowSettings(true);
-                      setShowProfile(false);
-                    }}
-                  />
+                  <MenuItem text="Settings" onClick={() => { setShowProfile(false); navigate("/settings") }}/>
 
-                  <MenuItem
-                    text="Logout"
-                    red
-                    onClick={handleLogout}
-                  />
+                  <MenuItem text="Logout" red onClick={handleLogout}/>
                 </motion.div>
               )}
             </AnimatePresence>

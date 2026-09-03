@@ -19,10 +19,17 @@ export const getCurrentUser = async (dispatch) => {
 
     return result.data;
   } catch (error) {
-    console.error(
-      "❌ getCurrentUser failed:",
-      error.response?.data || error.message
-    );
+    /* 401 is the normal answer for someone who simply is not signed in. Logging
+       it as an error filled the console with red on every visit, which is part
+       of why a genuinely broken sign-in was so hard to spot. */
+    if (error.response?.status === 401) {
+      console.log("ℹ️ No active session — rendering signed out.");
+    } else {
+      console.error(
+        "❌ getCurrentUser failed:",
+        error.response?.data || error.message
+      );
+    }
 
     // User is not authenticated
     dispatch(setUserData(null));

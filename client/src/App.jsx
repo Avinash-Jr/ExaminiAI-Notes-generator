@@ -6,18 +6,25 @@ import { useDispatch ,useSelector } from 'react-redux'
 import { getCurrentUser } from './services/api.js'
 export const serverUrl = "http://localhost:8000"
 import { useState } from 'react'
+import Pricing from './pages/Pricing.jsx'
+import History from './pages/History.jsx'
+import Contact from './pages/Contact.jsx'
+import Layout from './components/Layout.jsx'
+import Notes from './pages/Notes.jsx'
+import About from './pages/About.jsx'
+import Terms from './pages/Terms.jsx'
+import Privacy from './pages/Privacy.jsx'
 
 
 const App = () => {
   const dispatch = useDispatch()
   const { userData } = useSelector((state) => state.user) // userData is the data that is stored in the redux store
-  useEffect(()=>{
-    getCurrentUser(dispatch)
-  },[dispatch])
-  // console.log(userData)
-   // Important: don't redirect to /auth before checking the existing cookie.
+
+  // Important: don't redirect to /auth before checking the existing cookie.
   const [authLoading, setAuthLoading] = useState(true);
 
+  // One call only — this used to run in a second effect as well, which fired
+  // two /currentuser requests and two dispatches on every mount.
   useEffect(() => {
     const checkUser = async () => {
       try {
@@ -42,11 +49,28 @@ const App = () => {
 
   return (
     <Routes>
-      {/* <Route path='/' element = {userData?<Home/>: <Navigate to = "/auth"/> }/>  // for redirecting to the auth page */}
             <Route path='/' element = {<Home/>}/>
+      {/* <Route path='/' element = {userData?<Home/>: <Navigate to = "/auth"/> }/>  // for redirecting to the auth page */}
       <Route path='/auth' element = {userData ? <Navigate to = "/" replace/> : <Auth/>} />
+      <Route path='/pricing' element = {userData ? <Navigate to = "/" replace/> : <Pricing/>} />
+
+      {/* Content pages share the Layout shell: header, page nav, footer.
+          History and Contact used to redirect signed-in users away, which made
+          them unreachable for everyone who was logged in — that guard is gone. */}
+      <Route element={<Layout />}>
+        <Route path='/about' element={<About />} />
+        <Route path='/contact' element={<Contact />} />
+        <Route path='/terms' element={<Terms />} />
+        <Route path='/privacy' element={<Privacy />} />
+
+        {/* Notes and History show one account's own content, so gate them once
+            auth is switched back on above:
+            element={userData ? <Notes/> : <Navigate to="/auth" replace/>} */}
+        <Route path='/notes' element={<Notes />} />
+        <Route path='/history' element={<History />} />
+      </Route>
     </Routes>
-     
+
   )
 }
 

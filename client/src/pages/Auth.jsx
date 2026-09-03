@@ -8,11 +8,53 @@ import axios from "axios";
 import { serverUrl } from "../App.jsx";
 import { useDispatch } from "react-redux";
 import { setUserData } from "../redux/userSlice.js";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+/**
+ * Turns whatever was thrown into a line the person in front of the screen can
+ * act on. Returns null when there is genuinely nothing to report.
+ */
+function describeAuthError(error) {
+  /* Closing the Google popup is a decision, not a failure. */
+  if (
+    error.code === "auth/popup-closed-by-user" ||
+    error.code === "auth/cancelled-popup-request"
+  ) {
+    return null;
+  }
+
+  if (error.code === "auth/popup-blocked") {
+    return "Your browser blocked the Google popup. Allow popups for this site, then try again.";
+  }
+
+  /* The server answered, but not with a success. */
+  if (error.response) {
+    const detail =
+      error.response.data?.message || `status ${error.response.status}`;
+
+    return `Google accepted you, but signing in to ExaminAI failed — ${detail}.`;
+  }
+
+  /* The request left the browser and nothing came back. */
+  if (error.request) {
+    return "Could not reach the ExaminAI server. Please try again.";
+  }
+
+  return error.message || "Something went wrong signing in. Please try again.";
+}
 
 function Auth() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleGoogleAuth = async () => {
+    setError(null);
+    setPending(true);
+
     try {
       console.log("🔵 Starting Google authentication...");
 
@@ -38,7 +80,7 @@ function Auth() {
       console.log("🔵 Sending user to backend...");
 
       const result = await axios.post(
-        `${serverUrl}/api/user/googleAuth`,
+        `${serverUrl}/api/auth/googleAuth`,
         {
           name,
           email,
@@ -73,6 +115,11 @@ function Auth() {
       dispatch(setUserData(backendUser));
 
       console.log("✅ User saved to Redux:", backendUser);
+
+      /* Send them to the app. The /auth route also redirects on its own once
+         userData is set, but navigating here means the redirect no longer
+         depends on that guard staying in place. */
+      navigate("/", { replace: true });
     } catch (error) {
       console.error("❌ Google Authentication Error");
 
@@ -84,6 +131,12 @@ function Auth() {
       } else {
         console.error("Error:", error.message);
       }
+
+      /* Without this the page sat there looking idle, which is exactly how a
+         failed sign-in used to look like "nothing happened". */
+      setError(describeAuthError(error));
+    } finally {
+      setPending(false);
     }
   };
 
@@ -137,24 +190,30 @@ function Auth() {
             <motion.button
               type="button"
               onClick={handleGoogleAuth}
-              whileHover={{
-                y: -10,
-                rotateX: 8,
-                rotateY: -8,
-                scale: 1.07,
-              }}
+              disabled={pending}
+              aria-busy={pending}
+              whileHover={
+                pending
+                  ? undefined
+                  : {
+                      y: -10,
+                      rotateX: 8,
+                      rotateY: -8,
+                      scale: 1.07,
+                    }
+              }
               transition={{
                 type: "spring",
                 stiffness: 200,
                 damping: 10,
               }}
-              whileTap={{ scale: 0.97 }}
-              className="mt-10 px-10 py-3 rounded-xl flex items-center gap-3 bg-white border border-black/10 font-semibold text-lg shadow-[0_25px_60px_rgba(0,0,0,0.25)]"
+              whileTap={pending ? undefined : { scale: 0.97 }}
+              className="mt-10 px-10 py-3 rounded-xl flex items-center gap-3 bg-white border border-black/10 font-semibold text-lg shadow-[0_25px_60px_rgba(0,0,0,0.25)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <FcGoogle size={22} />
 
               <span className="font-semibold text-xl text-black">
-                Continue with Google
+                {pending ? "Signing you in…" : "Continue with Google"}
               </span>
             </motion.button>
 
@@ -203,6 +262,16 @@ function Auth() {
                 Continue with Microsoft
               </span>
             </motion.button>
+
+            {/* SIGN-IN ERROR */}
+            {error ? (
+              <p
+                role="alert"
+                className="mt-8 max-w-xl rounded-2xl border border-red-900/25 bg-red-50 px-5 py-4 text-base font-medium text-red-900"
+              >
+                {error}
+              </p>
+            ) : null}
 
             {/* CREDIT MESSAGE */}
             <div className="mt-8 p-5 max-w-xl rounded-2xl bg-black/5 border border-black/10">

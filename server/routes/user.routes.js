@@ -1,5 +1,8 @@
 import express from "express"
-import isAuth from "../controllers/user.controller.js"
+// isAuth is the middleware, not a controller — importing it from
+// user.controller.js handed this route a second copy of getCurrentUser, so the
+// token was never checked and req.userId was always undefined.
+import isAuth from "../middleware/isAuth.js"
 import getCurrentUser from "../controllers/user.controller.js"
 
 

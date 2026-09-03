@@ -1,15 +1,15 @@
-import React from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
+import { Link } from "react-router-dom";
 import img from "../assets/logo.png";
 
 const Footer = () => {
   const quickLinks = [
-    "Terms of Service",
-    "Privacy Policy",
-    "Contact Us",
-    "About Us",
-    "Notes",
-    "History",
+    { label: "Terms of Service", to: "/terms" },
+    { label: "Privacy Policy", to: "/privacy" },
+    { label: "Contact Us", to: "/contact" },
+    { label: "About Us", to: "/about" },
+    { label: "Notes", to: "/notes" },
+    { label: "History", to: "/history" },
   ];
 
   return (
@@ -51,23 +51,24 @@ const Footer = () => {
           </div>
 
           {/* Quick Links */}
-          <div>
+          <nav aria-label="Footer">
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-300">
               Quick Links
             </h3>
 
-            <div className="flex flex-wrap gap-x-6 gap-y-3 md:justify-end">
+            <ul className="flex flex-wrap gap-x-6 gap-y-3 md:justify-end">
               {quickLinks.map((link) => (
-                <a
-                  key={link}
-                  href="#"
-                  className="text-sm text-gray-400 transition-colors duration-200 hover:text-white"
-                >
-                  {link}
-                </a>
+                <li key={link.to}>
+                  <Link
+                    to={link.to}
+                    className="text-sm text-gray-400 transition-colors duration-200 hover:text-white"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
               ))}
-            </div>
-          </div>
+            </ul>
+          </nav>
         </div>
 
         {/* Divider */}

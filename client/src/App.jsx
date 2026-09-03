@@ -6,6 +6,9 @@ import { useDispatch ,useSelector } from 'react-redux'
 import { getCurrentUser } from './services/api.js'
 export const serverUrl = "http://localhost:8000"
 import { useState } from 'react'
+import Pricing from './pages/pricing.jsx'
+import History from './pages/History.jsx'
+import Contact from './pages/Contact.jsx'
 
 
 const App = () => {
@@ -42,9 +45,12 @@ const App = () => {
 
   return (
     <Routes>
-      {/* <Route path='/' element = {userData?<Home/>: <Navigate to = "/auth"/> }/>  // for redirecting to the auth page */}
-            <Route path='/' element = {<Home/>}/>
+            {/* <Route path='/' element = {<Home/>}/> */}
+      <Route path='/' element = {userData?<Home/>: <Navigate to = "/auth"/> }/>  // for redirecting to the auth page
       <Route path='/auth' element = {userData ? <Navigate to = "/" replace/> : <Auth/>} />
+      <Route path='/history' element = {userData ? <Navigate to = "/" replace/> : <History/>} />
+      <Route path='/pricing' element = {userData ? <Navigate to = "/" replace/> : <Pricing/>} />
+      <Route path='/contact' element = {userData ? <Navigate to = "/" replace/> : <Contact/>} />
     </Routes>
      
   )

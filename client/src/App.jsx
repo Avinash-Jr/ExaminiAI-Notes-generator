@@ -14,6 +14,8 @@ import Notes from './pages/Notes.jsx'
 import About from './pages/About.jsx'
 import Terms from './pages/Terms.jsx'
 import Privacy from './pages/Privacy.jsx'
+import Settings from './pages/Settings.jsx'
+import TopicForm from './pages/TopicForm.jsx'
 
 
 const App = () => {
@@ -68,6 +70,15 @@ const App = () => {
             element={userData ? <Notes/> : <Navigate to="/auth" replace/>} */}
         <Route path='/notes' element={<Notes />} />
         <Route path='/history' element={<History />} />
+
+        {/* Settings needs no guard here: it renders its own "sign in first"
+            state, which keeps the URL working when someone arrives from a
+            bookmark with an expired cookie. */}
+        <Route path='/settings' element={<Settings />} />
+
+        {/* The brief arrives here in router state from the generate dialog. The
+            page handles arriving without one, so the URL stays shareable. */}
+        <Route path='/topic-form' element={<TopicForm />} />
       </Route>
     </Routes>
 

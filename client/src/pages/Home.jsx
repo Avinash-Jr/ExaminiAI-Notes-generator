@@ -1,8 +1,9 @@
 import Navbar from "../components/Navbar.jsx";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import heroVideo from "../assets/navbar-video.mp4";
 import Footer from "../components/Footer.jsx";
+import GenerateNotesDialog from "../components/GenerateNotesDialog.jsx";
 
 const features = [
   {
@@ -32,7 +33,8 @@ const features = [
 ];
 
 export const Home = () => {
-  const navigate = useNavigate();
+  /* "Get Started" opens the brief; the topic form is the screen after it. */
+  const [briefOpen, setBriefOpen] = useState(false);
 
   return (
     <div className="min-h-screen overflow-hidden bg-white text-black">
@@ -102,7 +104,7 @@ export const Home = () => {
               >
                 <motion.button
                   type="button"
-                  onClick={() => navigate("/")}
+                  onClick={() => setBriefOpen(true)}
                   whileHover={{
                     y: -4,
                     scale: 1.03,
@@ -314,6 +316,11 @@ export const Home = () => {
         </section>
         <Footer />
       </main>
+
+      <GenerateNotesDialog
+        open={briefOpen}
+        onClose={() => setBriefOpen(false)}
+      />
     </div>
   );
 };

@@ -9,13 +9,14 @@ import Container from "./ui/Container.jsx";
 import logo from "../assets/logo.png";
 
 /**
- * Pages reachable from the thin nav row. Notes and History belong to an
- * account, so they only appear once someone is signed in. Footer carries the
+ * Pages reachable from the thin nav row. Notes, History and Settings belong to
+ * an account, so they only appear once someone is signed in. Footer carries the
  * policy links for everyone.
  */
 const pages = [
   { to: "/notes", label: "Notes", private: true },
   { to: "/history", label: "History", private: true },
+  { to: "/settings", label: "Settings", private: true },
   { to: "/about", label: "About", private: false },
   { to: "/contact", label: "Contact", private: false },
 ];

@@ -33,6 +33,7 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
+app.use("/api/notes", Notesrouter);
 
 app.get("/", (req, res) => {
     res.status(200).json({

@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { FiSearch, FiStar } from "react-icons/fi";
 
 import Button from "../components/ui/Button.jsx";
 import Chip from "../components/ui/Chip.jsx";
 import Container from "../components/ui/Container.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
+import GenerateNotesDialog from "../components/GenerateNotesDialog.jsx";
 import MarginRail from "../components/ui/MarginRail.jsx";
 import PageHeader from "../components/ui/PageHeader.jsx";
 import Panel from "../components/ui/Panel.jsx";
@@ -46,6 +46,7 @@ const Notes = () => {
   const [query, setQuery] = useState("");
   const [subject, setSubject] = useState(ALL);
   const [sort, setSort] = useState("newest");
+  const [briefOpen, setBriefOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -70,7 +71,7 @@ const Notes = () => {
         title="Notes"
         standfirst="Every set of notes ExaminAI has generated for you, newest first. Search across titles and subjects, or narrow to one paper."
         actions={
-          <Button as={Link} to="/" variant="accent">
+          <Button variant="accent" onClick={() => setBriefOpen(true)}>
             Generate new notes
           </Button>
         }
@@ -157,7 +158,7 @@ const Notes = () => {
                   Clear search and filters
                 </Button>
               ) : (
-                <Button as={Link} to="/" variant="accent">
+                <Button variant="accent" onClick={() => setBriefOpen(true)}>
                   Generate your first notes
                 </Button>
               )
@@ -177,6 +178,11 @@ const Notes = () => {
           ))}
         </ul>
       )}
+
+      <GenerateNotesDialog
+        open={briefOpen}
+        onClose={() => setBriefOpen(false)}
+      />
     </Container>
   );
 };

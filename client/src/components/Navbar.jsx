@@ -1,12 +1,10 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useSelector, useDispatch } from "react-redux";
 import { BsPatchPlusFill } from "react-icons/bs";
-import axios from "axios";
-import { serverUrl } from "../App.jsx";
 import logo from "../assets/logo.png";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { setUserData } from "../redux/userSlice.js";
+import { logout } from "../services/api.js";
 
 function Navbar() {
   const { userData } = useSelector((state) => state.user);
@@ -20,28 +18,16 @@ function Navbar() {
   const credits = userData?.credits ?? 100;
 
   const handleLogout = async () => {
-    try {
-      console.log("🔵 Logging out...");
+    /* Close the menu first — it gives immediate feedback while the request is
+       still in flight, and once Redux clears this component is unmounted. */
+    setShowProfile(false);
+    setShowCredits(false);
 
-      await axios.get(`${serverUrl}/api/auth/logout`, {
-        withCredentials: true,
-      });
+    /* Clearing the cookie and Redux lives in the shared helper. Two copies of
+       that logic is how the navbar and the settings page drift apart. */
+    await logout(dispatch);
 
-      dispatch(setUserData(null));
-
-      setShowProfile(false);
-      setShowCredits(false);
-
-      navigate("/auth", { replace: true });
-
-      console.log("✅ Logged out successfully");
-    } catch (error) {
-      console.error("❌ Logout failed:", error.response?.data || error.message);
-
-      // Clear Redux even if backend logout fails.
-      dispatch(setUserData(null));
-      navigate("/auth", { replace: true });
-    }
+    navigate("/auth", { replace: true });
   };
 
   const firstLetter =
@@ -54,23 +40,25 @@ function Navbar() {
       transition={{ duration: 1.5 }}
       className="
         relative z-20
-        mt-6 mx-6
+        mt-4 mx-4 sm:mt-6 sm:mx-6
         rounded-2xl
         bg-linear-to-br from-black/90 to-black/90
         backdrop-blur-2xl
         border border-white/10
         shadow-[0_22px_55px_rgba(0,0,0,0.75)]
-        flex items-center justify-between
-        px-8 py-4
+        flex items-center justify-between gap-3
+        px-4 py-3 sm:px-8 sm:py-4
       "
     >
-      {/* Logo */}
-      <div className="flex items-center gap-3">
+      {/* Logo. `min-w-0` lets the wordmark truncate instead of shoving the
+          credits pill off the right edge of a phone. */}
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <img
           src={logo}
           alt="ExamNotes AI logo"
           className="
-            w-11 h-11
+            w-9 h-9 sm:w-11 sm:h-11
+            shrink-0
             rounded-xl
             object-cover
             border border-white/10
@@ -78,14 +66,14 @@ function Navbar() {
           "
         />
 
-        <span className="text-2xl text-gray-300 font-bold">
+        <span className="truncate text-base sm:text-2xl text-gray-300 font-bold">
           ExamNotes{" "}
           <span className="text-amber-100">AI</span>
         </span>
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-6 relative">
+      <div className="flex shrink-0 items-center gap-3 sm:gap-6 relative">
         {/* Credits */}
         <div className="relative">
           <motion.div
@@ -97,8 +85,8 @@ function Navbar() {
             whileTap={{ scale: 1.01 }}
             className="
               flex items-center justify-center
-              gap-2
-              px-4 py-2
+              gap-1.5 sm:gap-2
+              px-3 py-1.5 sm:px-4 sm:py-2
               rounded-xl
               bg-white/10
               border border-white/20
@@ -110,7 +98,7 @@ function Navbar() {
               hover:bg-white/15
             "
           >
-            <span className="text-xl">💎</span>
+            <span className="text-base sm:text-xl">💎</span>
 
             <span className="font-semibold">
               {credits}
@@ -119,7 +107,7 @@ function Navbar() {
             <motion.span
               whileHover={{ scale: 1.2 }}
               whileTap={{ scale: 0.99 }}
-              className="text-xl"
+              className="hidden text-base sm:inline-block sm:text-xl"
             >
               <BsPatchPlusFill />
             </motion.span>
@@ -145,8 +133,9 @@ function Navbar() {
                 }}
                 transition={{ duration: 0.3 }}
                 className="
-                  absolute right-[-10px] mt-4
-                  w-64 rounded-2xl
+                  absolute right-0 mt-4
+                  w-64 max-w-[calc(100vw-3rem)]
+                  rounded-2xl
                   bg-black/90
                   backdrop-blur-xl
                   border border-white/10
@@ -154,18 +143,18 @@ function Navbar() {
                   p-4 text-white
                 "
               >
-                <h4 className="text-2xl">
+                <h4 className="text-xl sm:text-2xl">
                   Buy Credits
                 </h4>
 
-                <p className="text-lg text-gray-400 mb-4">
+                <p className="text-base sm:text-lg text-gray-400 mb-4">
                   Use Credits to generate AI Notes, Diagrams & PDFs
                 </p>
 
                 <button
                   onClick={() => {setShowCredits(false); navigate("/pricing")}}
                   className="
-                    w-full py-4 rounded-lg
+                    w-full py-3 sm:py-4 rounded-lg
                     bg-linear-to-br from-white to-pink-300/90
                     text-black font-semibold
                   "
@@ -188,7 +177,7 @@ function Navbar() {
             whileTap={{ scale: 1.01 }}
             className="
               flex items-center justify-center
-              gap-1 px-4 py-2 rounded-full
+              gap-1 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full
               bg-white/10
               border border-white/20
               text-white text-sm
@@ -198,45 +187,36 @@ function Navbar() {
             <span className="text-lg font-bold">
               {firstLetter}
             </span>
-
-            <AnimatePresence>
-              {showProfile && (
-                <motion.div
-                  initial={{
-                    opacity: 0,
-                    y: -10,
-                    scale: 0.95,
-                  }}
-                  animate={{
-                    opacity: 1,
-                    y: 10,
-                    scale: 1,
-                  }}
-                  exit={{
-                    opacity: 0,
-                    y: -10,
-                    scale: 0.95,
-                  }}
-                  transition={{ duration: 0.3 }}
-                  className="
-                    absolute right-0 top-full mt-4
-                    w-52 rounded-2xl
-                    bg-black/90
-                    backdrop-blur-xl
-                    border border-white/10
-                    shadow-[0_25px_60px_rgba(0,0,0,0.7)]
-                    p-4 text-white
-                  "
-                >
-                  <MenuItem text="History" onClick={() => {setShowProfile(false); navigate("/history")}}/>
-
-                  <MenuItem text="Settings" onClick={() => { setShowProfile(false); navigate("/settings") }}/>
-
-                  <MenuItem text="Logout" red onClick={handleLogout}/>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
+
+          {/* A sibling of the avatar, not a child. Nested inside it, the menu
+              inherited the avatar's hover scale, and every click in the menu
+              bubbled back to the toggle — reopening what you just chose. */}
+          <AnimatePresence>
+            {showProfile && (
+              <motion.div
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 10, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                className="
+                  absolute right-0 top-full mt-4
+                  w-52 max-w-[calc(100vw-3rem)] rounded-2xl
+                  bg-black/90
+                  backdrop-blur-xl
+                  border border-white/10
+                  shadow-[0_25px_60px_rgba(0,0,0,0.7)]
+                  p-4 text-white
+                "
+              >
+                <MenuItem text="History" onClick={() => {setShowProfile(false); navigate("/history")}}/>
+
+                <MenuItem text="Settings" onClick={() => { setShowProfile(false); navigate("/settings") }}/>
+
+                <MenuItem text="Logout" red onClick={handleLogout}/>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </motion.div>

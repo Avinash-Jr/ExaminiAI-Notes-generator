@@ -38,3 +38,42 @@ export const getCurrentUser = async (dispatch) => {
   }
 };
 
+export const generateNotes = async(payload)=>{
+  try{
+    const result = await axios.post(`${serverUrl}/api/notes/generate-notes`, payload, {
+      withCredentials: true,
+    });
+    return result.data;
+  } catch(error){
+    console.error("❌ generateNotes failed:", error.response?.data || error.message);
+    throw error;
+  }
+}
+  
+/**
+ * Ends the session: clears the cookie on the server, then clears Redux.
+ *
+ * Navigation is left to the caller, because where you go next depends on where
+ * you pressed it — the navbar menu and the settings page both use this.
+ */
+export const logout = async (dispatch) => {
+  try {
+    console.log("🔵 Logging out...");
+
+    await axios.get(`${serverUrl}/api/auth/logout`, {
+      withCredentials: true,
+    });
+
+    console.log("✅ Logged out successfully");
+  } catch (error) {
+    console.error(
+      "❌ Logout request failed:",
+      error.response?.data || error.message
+    );
+  } finally {
+    /* Clear locally whatever the server said. Leaving someone apparently signed
+       in after they asked to leave is worse than a stale cookie. */
+    dispatch(setUserData(null));
+  }
+};
+

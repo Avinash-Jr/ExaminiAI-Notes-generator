@@ -1,3 +1,14 @@
+// BEFORE: material param missing, no sanitization, bare interpolation -> prompt injection / truncation
+// AFTER: sanitized, capped, material injected as explicit section, structured for Gemini
+
+function sanitize(value, maxLen) {
+  if (typeof value !== "string") return "";
+  // strip control chars, normalize whitespace, cap length
+  let s = value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").trim();
+  if (s.length > maxLen) s = s.slice(0, maxLen);
+  return s;
+}
+
 export const buildPrompt = ({
   topic,
   subject,
@@ -6,20 +17,36 @@ export const buildPrompt = ({
   revisionMode,
   includeDiagrams,
   includeCharts,
+  material,
 }) => {
-  return `You are an expert ${subject} educator, exam strategist, and study-material designer.
+  const cleanTopic = sanitize(topic, 500);
+  const cleanSubject = sanitize(subject || cleanTopic, 200);
+  const cleanMaterial = material ? sanitize(material, 10000) : "";
 
-Your task is to create high-quality, exam-focused study notes for the topic "${topic}".
+  // Map internal format values to readable instructions
+  const formatLabel =
+    format === "summary" ? "One-page summary" :
+    format === "documentation" ? "Project documentation" :
+    format === "questions" ? "Question and answer pairs" :
+    "Revision notes";
+
+  const materialSection = cleanMaterial
+    ? `\n## SOURCE MATERIAL (use this as primary source; do not contradict it)\n\`\`\`\n${cleanMaterial}\n\`\`\`\n`
+    : `\n## SOURCE MATERIAL\nNo additional material provided — generate from general knowledge for the topic.\n`;
+
+  return `You are an expert ${cleanSubject} educator, exam strategist, and study-material designer.
+
+Your task is to create high-quality, exam-focused study notes for the topic "${cleanTopic}".
 
 ## INPUT CONFIGURATION
-- Subject: ${subject}
-- Topic: ${topic}
+- Subject: ${cleanSubject}
+- Topic: ${cleanTopic}
 - Target Exam: ${examType}
-- Output Format: ${format}
+- Output Format: ${formatLabel}
 - Revision Mode: ${revisionMode}
 - Diagrams: ${includeDiagrams ? "Enabled" : "Disabled"}
 - Charts: ${includeCharts ? "Enabled" : "Disabled"}
-
+${materialSection}
 ## EXAM-SPECIFIC RULES
 Generate the notes specifically for the ${examType} examination.
 
@@ -123,7 +150,7 @@ Where useful, include:
 
 ## QUALITY CONTROL
 Before producing the final answer, verify that:
-1. Every section is relevant to "${topic}".
+1. Every section is relevant to "${cleanTopic}".
 2. The content is appropriate for ${examType}.
 3. The difficulty matches the intended exam level.
 4. The content follows ${revisionMode} revision requirements.
@@ -132,7 +159,7 @@ Before producing the final answer, verify that:
 7. No unsupported or invented factual claims are included.
 8. There is no unnecessary repetition.
 9. The notes are logically structured.
-10. The final output follows the requested ${format} format.
+10. The final output follows the requested ${formatLabel} format.
 
 ## FINAL REVISION SECTION
 End with:
@@ -144,5 +171,5 @@ End with:
 - Common mistakes
 - Exam-focused takeaways
 
-Return only the completed study notes in ${format} format.`;
+Return only the completed study notes in ${formatLabel} format. Ensure the notes are complete and substantial (at least 600 words).`;
 };

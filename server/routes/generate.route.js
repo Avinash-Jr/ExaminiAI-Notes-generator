@@ -1,10 +1,10 @@
-import express from "express"
-import { generateNotes } from "../controllers/generate.controller";
+﻿import express from "express";
+import isAuth from "../middleware/isAuth.js";
+import { generateNotes } from "../controllers/generate.controller.js";
 
-const Notesrouter = express.Router();
+const notesRouter = express.Router();
 
+// isAuth is required — this route spends credits and writes to the database
+notesRouter.post("/generate-notes", isAuth, generateNotes);
 
-Notesrouter.post("/generate-notes", isAuth, generateNotes);
-
-export default Notesrouter
- 
+export default notesRouter;

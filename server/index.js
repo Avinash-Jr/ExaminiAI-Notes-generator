@@ -5,20 +5,14 @@ import authRouter from "./routes/auth.route.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import userRouter from "./routes/user.routes.js";
+import generateRouter from "./routes/generate.route.js";
+import notesRouter from "./routes/notes.route.js";
 
 dotenv.config();
 const PORT = process.env.PORT || 5000;
 const app = express();
 
-app.listen(PORT, async () => {
-    console.log(`🚀 Server is starting on port ${PORT}`);
-    await connectDB();
-    console.log(`✅ Server is running on port ${PORT}`);
-});
-
-
-
-// CORS configuration
+// CORS configuration - must come BEFORE routes
 app.use(
     cors({
         origin: "http://localhost:5173",
@@ -28,12 +22,12 @@ app.use(
 );
 
 app.use(express.json());
-
 app.use(cookieParser());
 
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
-app.use("/api/notes", Notesrouter);
+app.use("/api/notes", generateRouter); // Note generation route
+app.use("/api/notes", notesRouter);     // User notes retrieval route
 
 app.get("/", (req, res) => {
     res.status(200).json({
@@ -47,7 +41,9 @@ app.get("/health", (req, res) => {
     });
 });
 
-
-
-// Whenever we call router our controller will be called
-// and it will handle the request and response.
+app.listen(PORT, async () => {
+    console.log(`🚀 Server is starting on port ${PORT}`);
+    await connectDB();
+    console.log(`✅ Server is running on port ${PORT}`);
+});
+        

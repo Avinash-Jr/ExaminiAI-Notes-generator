@@ -4,7 +4,7 @@ import Auth from './pages/Auth.jsx'
 import { useEffect } from 'react'
 import { useDispatch ,useSelector } from 'react-redux'
 import { getCurrentUser } from './services/api.js'
-export const serverUrl = "http://localhost:8000"
+export const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:8000"
 import { useState } from 'react'
 import Pricing from './pages/Pricing.jsx'
 import History from './pages/History.jsx'

@@ -48,6 +48,22 @@ app.get("/health", (req, res) => {
     });
 });
 
+// 404 handler for unknown API routes
+app.use("/api", (req, res) => {
+    res.status(404).json({ error: `Route ${req.method} ${req.originalUrl} not found.` });
+});
+
+// Global error handler — catches unhandled errors so the server doesn't crash
+app.use((err, req, res, _next) => {
+    console.error("Unhandled error:", err);
+    const status = err.statusCode || err.status || 500;
+    res.status(status).json({
+        error: process.env.NODE_ENV === "production"
+            ? "An internal error occurred."
+            : err.message || "An internal error occurred.",
+    });
+});
+
 app.listen(PORT, async () => {
     console.log(`🚀 Server is starting on port ${PORT}`);
     await connectDB();

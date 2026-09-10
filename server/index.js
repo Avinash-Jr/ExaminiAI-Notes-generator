@@ -16,6 +16,7 @@ const PORT = process.env.PORT || 5000;
 const app = express();
 
 // CORS configuration - must come BEFORE routes
+const IS_PROD = process.env.NODE_ENV === "production";
 const ALLOWED_ORIGIN = process.env.CLIENT_URL || "http://localhost:5173";
 app.use(
     cors({
@@ -24,6 +25,9 @@ app.use(
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     })
 );
+
+// Trust proxy in production (Render, Railway, etc. sit behind a reverse proxy)
+if (IS_PROD) app.set("trust proxy", 1);
 
 app.use(express.json());
 app.use(cookieParser());

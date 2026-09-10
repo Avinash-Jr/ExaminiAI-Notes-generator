@@ -2,6 +2,16 @@ import UserModel from "../models/user.models.js";
 import { getToken } from "../utils/token.js";
 import { logActivity } from "../utils/logActivity.js";
 
+const IS_PROD = process.env.NODE_ENV === "production";
+
+/** Shared cookie options — production uses Secure + SameSite=None for cross-origin. */
+const cookieOpts = {
+    httpOnly: true,
+    secure: IS_PROD,                       // true over HTTPS in production
+    sameSite: IS_PROD ? "none" : "strict", // "none" allows cross-origin cookies
+    maxAge: 7 * 24 * 60 * 60 * 1000,      // 7 days
+};
+
 export const googleAuth = async (req, res) => {
     try {
         const { email, name } = req.body;
@@ -21,12 +31,7 @@ export const googleAuth = async (req, res) => {
         const token = await getToken(user._id);
 
         // Store token in cookie
-        res.cookie("Token", token, {
-            httpOnly: true,
-            secure: false, // false for localhost, true in production (HTTPS)
-            sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
+        res.cookie("Token", token, cookieOpts);
 
         // Log the sign-in activity
         logActivity({
@@ -55,8 +60,8 @@ export const logOut = async (req, res) => {
         // Cookie name must match the cookie created above
         res.clearCookie("Token", {
             httpOnly: true,
-            secure: false,
-            sameSite: "strict",
+            secure: IS_PROD,
+            sameSite: IS_PROD ? "none" : "strict",
         });
 
         return res.status(200).json({

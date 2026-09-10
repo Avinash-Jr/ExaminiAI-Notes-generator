@@ -3,13 +3,14 @@
 // AFTER: "gemini-1.5-flash" + timeout + retry + parsing + sanitization
 
 const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 const TIMEOUT_MS = 30000;
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
 
-const isRetryableStatus = (status) => status === 429 || (status >= 500 && status < 600);
+const isRetryableStatus = (status) =>
+  status === 429 || (status >= 500 && status < 600);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export const generateGeminiContent = async (prompt) => {
@@ -25,12 +26,16 @@ export const generateGeminiContent = async (prompt) => {
   let cleanPrompt = prompt.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").trim();
   const MAX_PROMPT_CHARS = 15000;
   if (cleanPrompt.length > MAX_PROMPT_CHARS) {
-    console.warn(`Prompt truncated from ${cleanPrompt.length} to ${MAX_PROMPT_CHARS} chars`);
+    console.warn(
+      `Prompt truncated from ${cleanPrompt.length} to ${MAX_PROMPT_CHARS} chars`,
+    );
     cleanPrompt = cleanPrompt.slice(0, MAX_PROMPT_CHARS);
   }
 
   if (!apiKey?.trim()) {
-    const err = new Error("GEMINI_API_KEY is not configured in the environment.");
+    const err = new Error(
+      "GEMINI_API_KEY is not configured in the environment.",
+    );
     err.statusCode = 500;
     throw err;
   }
@@ -40,15 +45,22 @@ export const generateGeminiContent = async (prompt) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const response = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: cleanPrompt }] }],
-          generationConfig: { temperature: 0.3, topP: 0.9, maxOutputTokens: 8192 },
-        }),
-        signal: controller.signal,
-      });
+      const response = await fetch(
+        `${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: cleanPrompt }] }],
+            generationConfig: {
+              temperature: 0.3,
+              topP: 0.9,
+              maxOutputTokens: 8192,
+            },
+          }),
+          signal: controller.signal,
+        },
+      );
       clearTimeout(timeout);
 
       let data;
@@ -68,22 +80,32 @@ export const generateGeminiContent = async (prompt) => {
       }
 
       if (!response.ok) {
-        const apiMessage = data?.error?.message || `Gemini API request failed with status ${response.status}`;
+        const apiMessage =
+          data?.error?.message ||
+          `Gemini API request failed with status ${response.status}`;
         const err = new Error(apiMessage);
         if (response.status === 429) err.statusCode = 429;
         else if (response.status === 400) err.statusCode = 400;
-        else if (response.status === 401 || response.status === 403) err.statusCode = 502;
+        else if (response.status === 401 || response.status === 403)
+          err.statusCode = 502;
         else if (response.status >= 500) err.statusCode = 502;
         else err.statusCode = response.status;
         err.upstreamStatus = response.status;
         err.upstreamBody = data;
-        if (data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason === "SAFETY") {
+        if (
+          data?.promptFeedback?.blockReason ||
+          data?.candidates?.[0]?.finishReason === "SAFETY"
+        ) {
           err.statusCode = 422;
-          err.message = "Request blocked by content safety filters. Please rephrase your topic.";
+          err.message =
+            "Request blocked by content safety filters. Please rephrase your topic.";
         }
         if (isRetryableStatus(response.status) && attempt < MAX_RETRIES) {
-          const delay = BASE_DELAY_MS * Math.pow(2, attempt) + Math.random() * 250;
-          console.warn(`Gemini retry ${attempt + 1}/${MAX_RETRIES} after ${response.status} — waiting ${Math.round(delay)}ms`);
+          const delay =
+            BASE_DELAY_MS * Math.pow(2, attempt) + Math.random() * 250;
+          console.warn(
+            `Gemini retry ${attempt + 1}/${MAX_RETRIES} after ${response.status} — waiting ${Math.round(delay)}ms`,
+          );
           await sleep(delay);
           lastError = err;
           continue;
@@ -94,11 +116,15 @@ export const generateGeminiContent = async (prompt) => {
       const candidate = data?.candidates?.[0];
       if (!candidate) {
         if (data?.promptFeedback?.blockReason) {
-          const err = new Error(`Prompt blocked: ${data.promptFeedback.blockReason}`);
+          const err = new Error(
+            `Prompt blocked: ${data.promptFeedback.blockReason}`,
+          );
           err.statusCode = 422;
           throw err;
         }
-        const err = new Error("Gemini returned no candidates — unexpected response structure.");
+        const err = new Error(
+          "Gemini returned no candidates — unexpected response structure.",
+        );
         err.statusCode = 502;
         err.raw = data;
         throw err;
@@ -109,17 +135,26 @@ export const generateGeminiContent = async (prompt) => {
         throw err;
       }
       const parts = candidate?.content?.parts;
-      const text = Array.isArray(parts) ? parts.map((p) => (typeof p?.text === "string" ? p.text : "")).join("").trim() : "";
+      const text = Array.isArray(parts)
+        ? parts
+            .map((p) => (typeof p?.text === "string" ? p.text : ""))
+            .join("")
+            .trim()
+        : "";
       if (!text) {
         if (attempt < MAX_RETRIES) {
           const delay = BASE_DELAY_MS * Math.pow(2, attempt);
-          console.warn(`Gemini empty response, retry ${attempt + 1}/${MAX_RETRIES}`);
+          console.warn(
+            `Gemini empty response, retry ${attempt + 1}/${MAX_RETRIES}`,
+          );
           await sleep(delay);
           lastError = new Error("Gemini returned an empty response.");
           lastError.statusCode = 502;
           continue;
         }
-        const err = new Error("Gemini returned an empty response after retries.");
+        const err = new Error(
+          "Gemini returned an empty response after retries.",
+        );
         err.statusCode = 502;
         err.raw = data;
         throw err;
@@ -128,7 +163,9 @@ export const generateGeminiContent = async (prompt) => {
     } catch (error) {
       clearTimeout(timeout);
       if (error.name === "AbortError") {
-        const timeoutErr = new Error(`Gemini request timed out after ${TIMEOUT_MS}ms`);
+        const timeoutErr = new Error(
+          `Gemini request timed out after ${TIMEOUT_MS}ms`,
+        );
         timeoutErr.statusCode = 504;
         if (attempt < MAX_RETRIES) {
           console.warn(`Timeout retry ${attempt + 1}/${MAX_RETRIES}`);
@@ -141,7 +178,9 @@ export const generateGeminiContent = async (prompt) => {
       if (error instanceof TypeError && error.message.includes("fetch")) {
         if (attempt < MAX_RETRIES) {
           const delay = BASE_DELAY_MS * Math.pow(2, attempt);
-          console.warn(`Network error retry ${attempt + 1}/${MAX_RETRIES}: ${error.message}`);
+          console.warn(
+            `Network error retry ${attempt + 1}/${MAX_RETRIES}: ${error.message}`,
+          );
           await sleep(delay);
           lastError = error;
           lastError.statusCode = 502;
@@ -150,7 +189,11 @@ export const generateGeminiContent = async (prompt) => {
         error.statusCode = error.statusCode || 502;
         throw error;
       }
-      if (error.statusCode && isRetryableStatus(error.upstreamStatus || error.statusCode) && attempt < MAX_RETRIES) {
+      if (
+        error.statusCode &&
+        isRetryableStatus(error.upstreamStatus || error.statusCode) &&
+        attempt < MAX_RETRIES
+      ) {
         await sleep(BASE_DELAY_MS * Math.pow(2, attempt));
         lastError = error;
         continue;

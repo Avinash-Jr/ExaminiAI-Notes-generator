@@ -134,3 +134,28 @@ export const logout = async (dispatch) => {
     dispatch(setUserData(null));
   }
 };
+
+/**
+ * Fetch user activity history from the real API.
+ * @param {Object} [opts]
+ * @param {string} [opts.kind]   — filter by event kind
+ * @param {number} [opts.limit]  — max items
+ * @param {string} [opts.before] — ISO timestamp for cursor pagination
+ * @returns {Promise<Array>} array of activity events
+ */
+export const getActivity = async (opts = {}) => {
+  try {
+    const params = new URLSearchParams();
+    if (opts.kind) params.set("kind", opts.kind);
+    if (opts.limit) params.set("limit", String(opts.limit));
+    if (opts.before) params.set("before", opts.before);
+
+    const result = await axios.get(`${serverUrl}/api/activity?${params.toString()}`, {
+      withCredentials: true,
+    });
+    return result.data.data;
+  } catch (error) {
+    console.error("❌ getActivity failed:", error.response?.data || error.message);
+    throw error;
+  }
+};

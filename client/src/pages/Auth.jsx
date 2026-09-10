@@ -219,48 +219,36 @@ function Auth() {
 
             <motion.button
               type="button"
+              disabled
+              title="GitHub login coming soon"
               whileHover={{
-                y: -10,
-                rotateX: 8,
-                rotateY: -8,
-                scale: 1.07,
+                y: -3,
               }}
-              transition={{
-                type: "spring",
-                stiffness: 200,
-                damping: 10,
-              }}
-              whileTap={{ scale: 0.97 }}
-              className="mt-10 ml-3 px-10 py-3 rounded-xl flex items-center gap-3 bg-white border border-black/10 font-semibold text-lg shadow-[0_25px_60px_rgba(0,0,0,0.25)]"
+              className="mt-10 ml-3 px-10 py-3 rounded-xl flex items-center gap-3 bg-white border border-black/10 font-semibold text-lg shadow-[0_25px_60px_rgba(0,0,0,0.25)] opacity-50 cursor-not-allowed relative"
             >
               <FaGithub size={22} />
 
               <span className="font-semibold text-xl text-black">
                 Continue with Github
               </span>
+              <span className="absolute -top-2 -right-2 rounded-full bg-black px-2 py-0.5 text-[10px] font-bold text-white">Soon</span>
             </motion.button>
 
             <motion.button
               type="button"
+              disabled
+              title="Microsoft login coming soon"
               whileHover={{
-                y: -10,
-                rotateX: 8,
-                rotateY: -8,
-                scale: 1.07,
+                y: -3,
               }}
-              transition={{
-                type: "spring",
-                stiffness: 200,
-                damping: 10,
-              }}
-              whileTap={{ scale: 0.97 }}
-              className="mt-10 ml-3 px-10 py-3 rounded-xl flex items-center gap-3 bg-white border border-black/10 font-semibold text-lg shadow-[0_25px_60px_rgba(0,0,0,0.25)]"
+              className="mt-10 ml-3 px-10 py-3 rounded-xl flex items-center gap-3 bg-white border border-black/10 font-semibold text-lg shadow-[0_25px_60px_rgba(0,0,0,0.25)] opacity-50 cursor-not-allowed relative"
             >
               <TfiMicrosoftAlt size={22} />
 
               <span className="font-semibold text-xl text-black">
                 Continue with Microsoft
               </span>
+              <span className="absolute -top-2 -right-2 rounded-full bg-black px-2 py-0.5 text-[10px] font-bold text-white">Soon</span>
             </motion.button>
 
             {/* SIGN-IN ERROR */}

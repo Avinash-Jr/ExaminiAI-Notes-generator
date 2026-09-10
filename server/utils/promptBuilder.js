@@ -1,9 +1,5 @@
-// BEFORE: material param missing, no sanitization, bare interpolation -> prompt injection / truncation
-// AFTER: sanitized, capped, material injected as explicit section, structured for Gemini
-
 function sanitize(value, maxLen) {
   if (typeof value !== "string") return "";
-  // strip control chars, normalize whitespace, cap length
   let s = value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").trim();
   if (s.length > maxLen) s = s.slice(0, maxLen);
   return s;
@@ -23,7 +19,6 @@ export const buildPrompt = ({
   const cleanSubject = sanitize(subject || cleanTopic, 200);
   const cleanMaterial = material ? sanitize(material, 10000) : "";
 
-  // Map internal format values to readable instructions
   const formatLabel =
     format === "summary" ? "One-page summary" :
     format === "documentation" ? "Project documentation" :
@@ -49,18 +44,16 @@ Your task is to create high-quality, exam-focused study notes for the topic "${c
 ${materialSection}
 ## EXAM-SPECIFIC RULES
 Generate the notes specifically for the ${examType} examination.
-
-Follow these rules:
 1. Prioritize concepts that are important and likely to be tested in ${examType}.
-2. Focus on the depth of knowledge appropriate for ${examType}.
-3. Emphasize definitions, formulas, rules, concepts, patterns, and facts that are useful for solving exam questions.
+2. Focus on the depth appropriate for ${examType}.
+3. Emphasize definitions, formulas, rules, concepts, and patterns useful for solving exam questions.
 4. Identify high-priority topics and mark them clearly.
-5. Include common exam traps, misconceptions, and frequently confused concepts where relevant.
-6. Include typical question patterns or question types associated with the topic when appropriate.
+5. Include common exam traps and frequently confused concepts where relevant.
+6. Include typical question patterns associated with the topic when appropriate.
 7. Provide examples that reflect the style and difficulty of ${examType}.
-8. Do not add advanced or unrelated material unless it is relevant to ${examType}.
+8. Do not add advanced or unrelated material unless relevant to ${examType}.
 9. Optimize the notes for ${revisionMode} revision.
-10. Do not invent exam-specific facts, question patterns, weightages, or statistics. Only state such information when it is reliable.
+10. Do not invent exam-specific facts, weightages, or statistics.
 
 ## CONTENT RULES
 - Start with a clear overview of the topic.
@@ -70,96 +63,91 @@ Follow these rules:
 - Use bullet points for important facts and revision points.
 - Use tables for comparisons, classifications, differences, and structured information.
 - Include formulas with clear variable definitions where applicable.
-- Include worked examples or solved examples where they improve understanding.
+- Include worked examples where they improve understanding.
 - Highlight important keywords and takeaways.
 - Avoid repetition, filler, vague explanations, and off-topic content.
-- Maintain consistent terminology throughout the notes.
+- Maintain consistent terminology.
+
+## OUTPUT FORMAT — CRITICAL
+- Output MUST be valid Markdown. Never output raw HTML tags like <div>, <p>, <table>, <img>, <h1>, etc.
+- Do NOT wrap the whole response in HTML. Use only Markdown syntax:
+  - Headings: # ## ###
+  - Bold: **text**
+  - Lists: - item  /  1. item
+  - Tables: | col | col |  (with header separator row)
+  - Code: \`inline\` and \`\`\` blocks
+  - Images: ![caption](https://example.com/image.jpg)  — see Visuals section for how to emit them
+  - Diagrams: Mermaid fenced blocks — see Visuals section
+  - Charts: HTML-free data tables + chart spec — see Visuals section
+
+## VISUALS — how to emit diagrams, charts, and example images
+You MUST NOT emit raw HTML <img>, <svg>, <canvas>, or <iframe> tags. The renderer will strip them.
+
+Instead, use these three markers exactly as specified:
+
+### 1) Example / explanation images (real photos/illustrations)
+When an example would benefit from a real image (e.g., "photosynthesis diagram", "TCP handshake illustration"):
+- Emit exactly:  [[IMAGE: 3-6 keyword query | short caption ]]
+- Example:  [[IMAGE: mitochondria structure | Cross-section of a mitochondrion showing cristae ]]
+- Use 3–6 specific keywords (no sentences). The system will fetch a real, licensed image for those keywords.
+- Place the marker on its own line, right next to the concept it illustrates.
+- Use 1 image per major section where it genuinely helps; 2–3 total is ideal.
+
+### 2) Diagrams (structure, flow, hierarchy)
+- Emit Mermaid inside a fenced block with language "mermaid":
+  \`\`\`mermaid
+  flowchart TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action]
+    B -->|No| D[End]
+  \`\`\`
+- Allowed diagram kinds: flowchart, sequenceDiagram, classDiagram, stateDiagram, mindmap.
+- Keep diagrams simple, labeled, and directly tied to the topic.
+- After a complex diagram, add one sentence explaining the takeaway.
+
+### 3) Charts (quantitative comparisons)
+- Do NOT emit HTML chart tags. Emit a Markdown table with the data, preceded by a title line starting with "Chart:".
+- Example:
+  Chart: Revenue vs price elasticity
+  | Price | Demand | Revenue |
+  |-------|--------|---------|
+  | 10    | 100    | 1000    |
+  | 15    | 70     | 1050    |
+- The renderer turns this into a real chart. Add one sentence interpreting the chart after the table.
 
 ## DIAGRAM RULES
 ${
   includeDiagrams
     ? `
-Diagrams are ENABLED.
-
-Create diagrams only when they provide genuine educational value.
-
-Diagram rules:
-1. Use diagrams to explain processes, workflows, architectures, relationships, hierarchies, cycles, algorithms, or structures.
-2. Every diagram must directly relate to the topic.
-3. Prefer simple, clean, labeled diagrams that are easy to understand during revision.
-4. Include labels for important components.
-5. Show relationships, direction, sequence, or hierarchy clearly.
-6. Do not create diagrams merely for decoration.
-7. Avoid unnecessarily complex diagrams.
-8. Place each diagram immediately next to the concept it explains.
-9. Use text/ASCII diagrams, Mermaid, or another format supported by the requested output format.
-10. After a complex diagram, provide a brief explanation of what the learner should understand from it.
-`
+Diagrams are ENABLED. Create Mermaid diagrams where they genuinely clarify the topic (flows, architectures, cycles, hierarchies).
+Place each diagram immediately next to the concept it explains. One sentence takeaway after complex diagrams.`
     : `
-Diagrams are DISABLED.
-
-Do not generate diagrams, Mermaid diagrams, ASCII diagrams, flowcharts, or other visual diagrams.
-`
+Diagrams are DISABLED. Do not emit Mermaid blocks, ASCII diagrams, or flowcharts.`
 }
 
 ## CHART RULES
 ${
   includeCharts
     ? `
-Charts are ENABLED.
-
-Create charts only when quantitative or categorical visualization genuinely improves understanding.
-
-Chart rules:
-1. Use charts for comparisons, distributions, trends, proportions, rankings, or other data-driven relationships.
-2. Every chart must have a clear purpose and directly support the topic.
-3. Use the most appropriate chart type for the information.
-4. Clearly label axes, categories, values, and legends where applicable.
-5. Include a meaningful title.
-6. Use only accurate information from reliable knowledge or information provided in the prompt.
-7. Never invent statistics, measurements, percentages, or datasets.
-8. Do not create charts for purely conceptual information that is better represented using text or a diagram.
-9. Avoid unnecessary charts and visual clutter.
-10. After each chart, provide a short interpretation explaining the key takeaway.
-`
+Charts are ENABLED. Create "Chart:" tables where quantitative comparison genuinely improves understanding. Label clearly, use only accurate data, add an interpretation sentence.`
     : `
-Charts are DISABLED.
-
-Do not generate charts, graphs, plots, statistical visualizations, or other chart-based visuals.
-`
+Charts are DISABLED. Do not emit "Chart:" tables or any chart-like visualizations.`
 }
 
 ## REVISION MODE RULES
-Adapt the notes specifically for ${revisionMode} revision.
-
-Make the content:
-- Easy to scan quickly.
-- Organized into short, focused sections.
-- Focused on high-value information.
-- Easy to memorize and recall.
+Adapt the notes specifically for ${revisionMode} revision:
+- Easy to scan quickly; short, focused sections; high-value information.
 - Rich in keywords and exam triggers.
-- Free from unnecessary explanation when rapid revision is required.
-
-Where useful, include:
-- Memory tricks or mnemonics.
-- Key formulas.
-- One-line definitions.
-- Quick comparison tables.
-- Common mistakes.
-- Important exam tips.
+- Where useful: mnemonics, key formulas, one-line definitions, comparison tables, common mistakes.
 
 ## QUALITY CONTROL
 Before producing the final answer, verify that:
 1. Every section is relevant to "${cleanTopic}".
-2. The content is appropriate for ${examType}.
-3. The difficulty matches the intended exam level.
-4. The content follows ${revisionMode} revision requirements.
-5. Diagrams follow the diagram rules.
-6. Charts follow the chart rules.
-7. No unsupported or invented factual claims are included.
-8. There is no unnecessary repetition.
-9. The notes are logically structured.
-10. The final output follows the requested ${formatLabel} format.
+2. The content is appropriate for ${examType} and ${revisionMode}.
+3. Diagrams/charts follow the rules above and use the exact markers specified.
+4. No raw HTML tags are present.
+5. No unsupported or invented factual claims are included.
+6. The notes are logically structured and follow ${formatLabel} format.
 
 ## FINAL REVISION SECTION
 End with:
@@ -171,5 +159,5 @@ End with:
 - Common mistakes
 - Exam-focused takeaways
 
-Return only the completed study notes in ${formatLabel} format. Ensure the notes are complete and substantial (at least 600 words).`;
+Return only the completed study notes in Markdown. Ensure the notes are complete and substantial (at least 600 words).`;
 };

@@ -1,5 +1,5 @@
 import Navbar from "../components/Navbar.jsx";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useState } from "react";
 import heroVideo from "../assets/navbar-video.mp4";
 import Footer from "../components/Footer.jsx";
@@ -122,6 +122,7 @@ export const Home = () => {
 
                 <motion.button
                   type="button"
+                  onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
                   whileHover={{ y: -3 }}
                   className="rounded-xl border border-black/10 bg-white px-7 py-3.5 text-base font-semibold text-gray-800 shadow-sm transition hover:border-black/20 hover:shadow-md"
                 >
@@ -280,7 +281,7 @@ export const Home = () => {
         </section>
 
         {/* FEATURES */}
-        <section className="border-t border-black/5 bg-gray-50 px-6 py-20 lg:px-8 lg:py-24">
+        <section id="features" className="border-t border-black/5 bg-gray-50 px-6 py-20 lg:px-8 lg:py-24">
           <div className="mx-auto max-w-7xl">
             <motion.div
               initial={{ opacity: 0, y: 20 }}

@@ -7,15 +7,19 @@ import cors from "cors";
 import userRouter from "./routes/user.routes.js";
 import generateRouter from "./routes/generate.route.js";
 import notesRouter from "./routes/notes.route.js";
+import paymentRouter from "./routes/payment.route.js";
+import activityRouter from "./routes/activity.route.js";
+import contactRouter from "./routes/contact.route.js";
 
 dotenv.config();
 const PORT = process.env.PORT || 5000;
 const app = express();
 
 // CORS configuration - must come BEFORE routes
+const ALLOWED_ORIGIN = process.env.CLIENT_URL || "http://localhost:5173";
 app.use(
     cors({
-        origin: "http://localhost:5173",
+        origin: ALLOWED_ORIGIN,
         credentials: true,
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     })
@@ -28,6 +32,9 @@ app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
 app.use("/api/notes", generateRouter); // Note generation route
 app.use("/api/notes", notesRouter);     // User notes retrieval route
+app.use("/api/payment", paymentRouter); // Payment & credit purchase route
+app.use("/api/activity", activityRouter); // User activity history
+app.use("/api/contact", contactRouter);   // Contact form submissions
 
 app.get("/", (req, res) => {
     res.status(200).json({

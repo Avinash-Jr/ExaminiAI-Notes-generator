@@ -1,5 +1,6 @@
 import UserModel from "../models/user.models.js";
 import { getToken } from "../utils/token.js";
+import { logActivity } from "../utils/logActivity.js";
 
 export const googleAuth = async (req, res) => {
     try {
@@ -25,6 +26,14 @@ export const googleAuth = async (req, res) => {
             secure: false, // false for localhost, true in production (HTTPS)
             sameSite: "strict",
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
+        // Log the sign-in activity
+        logActivity({
+          userId: user._id,
+          kind: "Signed in",
+          title: "Signed in with Google",
+          detail: `${name} (${email})`,
         });
 
         return res.status(200).json({

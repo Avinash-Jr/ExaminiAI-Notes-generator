@@ -16,6 +16,8 @@ import Terms from './pages/Terms.jsx'
 import Privacy from './pages/Privacy.jsx'
 import Settings from './pages/Settings.jsx'
 import TopicForm from './pages/TopicForm.jsx'
+import Payment from './pages/Payment.jsx'
+import NotFound from './pages/NotFound.jsx'
 
 
 const App = () => {
@@ -54,7 +56,7 @@ const App = () => {
             <Route path='/' element = {<Home/>}/>
       {/* <Route path='/' element = {userData?<Home/>: <Navigate to = "/auth"/> }/>  // for redirecting to the auth page */}
       <Route path='/auth' element = {userData ? <Navigate to = "/" replace/> : <Auth/>} />
-      <Route path='/pricing' element = {userData ? <Navigate to = "/" replace/> : <Pricing/>} />
+      <Route path='/pricing' element = {<Pricing/>} />
 
       {/* Content pages share the Layout shell: header, page nav, footer.
           History and Contact used to redirect signed-in users away, which made
@@ -79,7 +81,11 @@ const App = () => {
         {/* The brief arrives here in router state from the generate dialog. The
             page handles arriving without one, so the URL stays shareable. */}
         <Route path='/topic-form' element={<TopicForm />} />
+        <Route path='/payment' element={<Payment />} />
       </Route>
+
+      {/* 404 catch-all — must be last */}
+      <Route path='*' element={<NotFound />} />
     </Routes>
 
   )

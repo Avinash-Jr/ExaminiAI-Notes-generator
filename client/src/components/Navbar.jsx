@@ -2,8 +2,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useSelector, useDispatch } from "react-redux";
 import { BsPatchPlusFill } from "react-icons/bs";
 import logo from "../assets/logo.png";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { logout } from "../services/api.js";
 
 function Navbar() {
@@ -11,6 +11,22 @@ function Navbar() {
 
   const [showCredits, setShowCredits] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const creditsRef = useRef(null);
+  const profileRef = useRef(null);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (creditsRef.current && !creditsRef.current.contains(e.target)) {
+        setShowCredits(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setShowProfile(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -52,7 +68,7 @@ function Navbar() {
     >
       {/* Logo. `min-w-0` lets the wordmark truncate instead of shoving the
           credits pill off the right edge of a phone. */}
-      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <Link to="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
         <img
           src={logo}
           alt="ExamNotes AI logo"
@@ -70,12 +86,12 @@ function Navbar() {
           ExamNotes{" "}
           <span className="text-amber-100">AI</span>
         </span>
-      </div>
+      </Link>
 
       {/* Right side */}
       <div className="flex shrink-0 items-center gap-3 sm:gap-6 relative">
         {/* Credits */}
-        <div className="relative">
+        <div className="relative" ref={creditsRef}>
           <motion.div
             onClick={() => {
               setShowCredits((prev) => !prev);
@@ -167,7 +183,7 @@ function Navbar() {
         </div>
 
         {/* Profile */}
-        <div className="relative">
+        <div className="relative" ref={profileRef}>
           <motion.div
             onClick={() => {
               setShowProfile((prev) => !prev);

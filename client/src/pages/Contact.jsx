@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
+import { serverUrl } from "../App.jsx";
 
 import Button from "../components/ui/Button.jsx";
 import Container from "../components/ui/Container.jsx";
@@ -72,14 +74,18 @@ const Contact = () => {
 
     setStatus("sending");
 
-    /* TODO: POST to `${serverUrl}/api/contact` once the endpoint exists, and
-       surface a failure by setting status back to "idle" with an error. */
-    await new Promise((resolve) => setTimeout(resolve, 700));
-
-    setStatus("sent");
+    try {
+      await axios.post(`${serverUrl}/api/contact`, values, { withCredentials: true });
+      setStatus("sent");
+    } catch (err) {
+      console.error("Contact form submission failed:", err);
+      const serverMsg = err.response?.data?.error;
+      setErrors({ _form: serverMsg || "Something went wrong. Please try again or email us directly." });
+      setStatus("idle");
+    }
   };
 
-  const problemCount = Object.keys(errors).length;
+  const problemCount = Object.keys(errors).filter((k) => k !== "_form").length;
 
   return (
     <Container className="py-14 sm:py-20">
@@ -127,6 +133,15 @@ const Contact = () => {
                   {problemCount === 1
                     ? "One field needs attention before this can send."
                     : `${problemCount} fields need attention before this can send.`}
+                </p>
+              ) : null}
+
+              {errors._form ? (
+                <p
+                  role="alert"
+                  className="mt-4 rounded-chip border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800"
+                >
+                  {errors._form}
                 </p>
               ) : null}
 

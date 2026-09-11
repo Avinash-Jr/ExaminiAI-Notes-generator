@@ -1,6 +1,6 @@
 import UserModel from "../models/user.models.js";
 import NotesModel from "../models/notes.models.js";
-import { generateGeminiContent } from "../services/gemini.services.js";
+import { generateContent } from "../services/aiRouter.js";
 import { enrichWithMedia } from "../services/media.services.js";
 import { buildPrompt } from "../utils/promptBuilder.js";
 import { logActivity } from "../utils/logActivity.js";
@@ -60,9 +60,9 @@ export const generateNotes = async (req, res) => {
 
     let aiResponse;
     try {
-      aiResponse = await generateGeminiContent(prompt);
+      aiResponse = await generateContent(prompt);
     } catch (genError) {
-      console.error("Gemini generation failed (no charge):", genError.message);
+      console.error("AI generation failed (no charge):", genError.message);
       const statusCode = genError.statusCode || 500;
       const message =
         statusCode === 429 ? "AI service is rate-limited. Please wait a minute and try again — you were not charged."
@@ -137,7 +137,7 @@ export const generateNotes = async (req, res) => {
       refId: notes._id,
     });
 
-    const resultPayload = { data: aiResponse, noteId: notes._id, creditRemaining: updatedUser.credits, creditsCharged: cost, charged: true, message: "Notes generated successfully.", notes };
+    const resultPayload = { data: aiResponse, noteId: notes._id, creditRemaining: updatedUser.credits, creditsCharged: cost, charged: true, message: "Notes generated successfully.", notes, provider: aiResponse.provider || "unknown" };
     if (idempotencyKey) idempotencyStore.set(idempotencyKey, { status: "done", result: resultPayload, expiresAt: Date.now() + IDEMPOTENCY_TTL_MS });
     return res.status(201).json(resultPayload);
   } catch (error) {

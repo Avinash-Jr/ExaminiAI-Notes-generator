@@ -1,10 +1,10 @@
 // Gemini API integration — production hardened
 const CANDIDATE_MODELS = [
   process.env.GEMINI_MODEL,
+  "gemini-3.1-flash-lite",
   "gemini-2.5-flash",
   "gemini-3.5-flash",
   "gemini-3.6-flash",
-  "gemini-3.1-flash-lite",
   "gemini-flash-latest",
 ].filter(Boolean);
 
@@ -12,7 +12,7 @@ const getGeminiEndpoint = (modelIndex = 0) => {
   if (process.env.GEMINI_URL && modelIndex === 0) {
     return process.env.GEMINI_URL;
   }
-  const modelName = CANDIDATE_MODELS[modelIndex] || "gemini-2.5-flash";
+  const modelName = CANDIDATE_MODELS[modelIndex] || "gemini-3.1-flash-lite";
   return `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 };
 

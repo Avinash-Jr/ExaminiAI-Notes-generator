@@ -52,7 +52,7 @@ export const generateNotes = async (payload, files = []) => {
       data,
       {
         withCredentials: true,
-        timeout: 45000,
+        timeout: 95000,
         headers,
       },
     );
@@ -76,7 +76,7 @@ export const generateNotes = async (payload, files = []) => {
     // Timeout vs network
     if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
       const tErr = new Error(
-        "Request timed out. You were not charged — please retry.",
+        "Request timed out. The server took too long to respond. You were not charged — please retry.",
       );
       tErr.status = 504;
       tErr.retryable = true;

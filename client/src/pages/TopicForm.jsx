@@ -282,9 +282,10 @@ const TopicForm = () => {
       const msg = error.message || "Something went wrong. Please try again.";
       const charged = error.charged === true;
       const retryable = error.retryable !== false;
+      const alreadyHasChargedNotice = /not charged/i.test(msg);
       setStatus({
         tone: "bad",
-        text: charged
+        text: charged || alreadyHasChargedNotice
           ? msg
           : `${msg}${retryable ? " — you were not charged, you can retry." : ""}`,
         retryable: !charged && retryable,

@@ -176,6 +176,11 @@ function generateFromProvider(prompt, provider) {
  * instead of discarding an otherwise recoverable generation.
  */
 export const generateAlternateContent = async (prompt, currentProvider) => {
+  // If currentProvider is gemini and available, stay on gemini for high speed & quality
+  if (currentProvider === "gemini" && isProviderAvailable("gemini")) {
+    const result = await generateGeminiContent(prompt);
+    return { ...result, provider: "gemini" };
+  }
   const alternateProvider = currentProvider === "openrouter" ? "gemini" : "openrouter";
   if (!isProviderAvailable(alternateProvider)) {
     const provider = currentProvider || "gemini";

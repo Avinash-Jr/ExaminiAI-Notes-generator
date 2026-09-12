@@ -72,9 +72,21 @@ app.get("/", (req, res) => {
     });
 });
 
-app.get("/health", (req, res) => {
+app.get("/health", async (req, res) => {
+    let aiStatus = undefined;
+    if (req.query.testAi === "true") {
+        try {
+            const { generateContent } = await import("./services/aiRouter.js");
+            const t0 = Date.now();
+            const r = await generateContent("Say OK");
+            aiStatus = { ok: true, provider: r.provider, timeMs: Date.now() - t0 };
+        } catch (e) {
+            aiStatus = { ok: false, error: e.message };
+        }
+    }
     res.status(200).json({
         status: "Server health is OK",
+        ...(aiStatus ? { ai: aiStatus } : {}),
     });
 });
 

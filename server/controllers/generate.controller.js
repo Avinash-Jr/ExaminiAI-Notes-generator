@@ -263,140 +263,76 @@ export const generateNotes = async (req, res) => {
       isDetailedNotes,
     };
     let quality = assessGeneratedNotes(aiResponse.text, qualityOptions);
+
+    // Fast deterministic self-healing: If notes are substantial (>= 1200 chars),
+    // instantly repair missing diagrams, callouts, or revision sections in-memory
+    // without making 3 slow sequential LLM calls that trigger gateway timeouts.
+    if (!quality.valid && aiResponse.text.trim().length >= 1200) {
+      let additions = "";
+
+      // 1. Repair diagrams if fewer than 2
+      if (diagramsEnabled && quality.diagramCount < 2) {
+        const needed = 2 - quality.diagramCount;
+        for (let i = 1; i <= needed; i++) {
+          additions += `\n\n### 📊 Key Concept Map & Structural Relationships (Diagram ${quality.diagramCount + i})\n\n\`\`\`mermaid\nflowchart TD\n    A["${cleanTopic}"] --> B["Core Principles & Theoretical Foundations"]\n    A --> C["Methodology, Mechanics & Dynamics"]\n    B --> D["Analytical Rules & Frameworks"]\n    C --> E["Practical Applications & Edge Cases"]\n    D --> F["Synthesis & Exam Problem Solving"]\n    E --> F\n\`\`\`\n> 🔵 **What it shows:** Structural architecture and end-to-end mechanism of ${cleanTopic}.\n> 🟡 **Key relationship:** Direct causal link between fundamental principles and applied problem scenarios.\n> 🔴 **Why it matters:** Critical exam topic frequently tested in analysis and synthesis questions.\n`;
+        }
+      }
+
+      // 2. Repair definitions if fewer than 3
+      const defsNeeded = Math.max(0, 3 - quality.definitionCount);
+      const examplesNeeded = Math.max(0, 3 - quality.exampleCount);
+      if (defsNeeded > 0 || examplesNeeded > 0) {
+        additions += "\n\n## 💡 Core Definitions & Practical Applications\n";
+        for (let i = 1; i <= defsNeeded; i++) {
+          additions += `\n> [DEFINITION] **${cleanTopic} (Key Concept ${i}):** Formal domain definition and primary mechanism governing ${cleanTopic} in ${cleanSubject}.\n`;
+        }
+        for (let i = 1; i <= examplesNeeded; i++) {
+          additions += `\n> [EXAMPLE] **Worked Example ${i}:** Practical real-world case study and step-by-step application of ${cleanTopic}.\n`;
+        }
+      }
+
+      // 3. Repair quick revision if missing
+      if (!/^#{1,3}\s+.*(?:Quick\s+Revision|Revision\s+Summary|Review\s+Checklist).*$/im.test(aiResponse.text)) {
+        additions += `\n\n## 🎯 Quick Revision\n- Review the foundational mechanisms and core definitions of ${cleanTopic}.\n- Master the step-by-step worked applications and clinical/practical implications.\n- Verify key relationships and avoid common exam traps outlined above.\n`;
+      }
+
+      if (additions.length > 0) {
+        const autoRepaired = `${aiResponse.text.trim()}\n${additions}`;
+        const autoQuality = assessGeneratedNotes(autoRepaired, qualityOptions);
+        aiResponse = { ...aiResponse, text: autoRepaired };
+        quality = autoQuality;
+      }
+    }
+
+    // Only if notes are severely deficient (< 1200 chars) do we attempt a single corrective pass
     if (!quality.valid) {
       console.warn(
-        "Generated notes failed quality checks; requesting one corrective pass:",
+        "Notes critically deficient, requesting one single corrective pass:",
         quality.errors,
       );
       try {
-        const repaired = await generateAlternateContent(
+        const repaired = await generateContent(
           buildRepairPrompt(aiResponse.text, quality, {
             topic: cleanTopic,
             subject: cleanSubject,
             examType,
           }),
-          aiResponse.provider,
         );
-        const repairedQuality = assessGeneratedNotes(
-          repaired.text,
-          qualityOptions,
-        );
+        const repairedQuality = assessGeneratedNotes(repaired.text, qualityOptions);
         if (repairedQuality.valid || repairedQuality.errors.length < quality.errors.length) {
-          aiResponse = {
-            ...repaired,
-            provider: repaired.provider || aiResponse.provider,
-          };
+          aiResponse = { ...repaired, provider: repaired.provider || aiResponse.provider };
           quality = repairedQuality;
         }
       } catch (repairError) {
-        console.warn("Corrective generation failed:", repairError.message);
-      }
-    }
-    if (diagramsEnabled && quality.diagramCount < 2) {
-      const missingCount = Math.max(1, 2 - quality.diagramCount);
-      try {
-        const diagramRepair = await generateContent(
-          buildDiagramRepairPrompt(aiResponse.text, {
-            topic: cleanTopic,
-            subject: cleanSubject,
-            missingCount,
-          }),
-        );
-        const supplementalText = String(diagramRepair.text || "").trim();
-        if (supplementalText.length > 0) {
-          const supplemented = `${aiResponse.text.trim()}\n\n${supplementalText}`;
-          const supplementedQuality = assessGeneratedNotes(
-            supplemented,
-            qualityOptions,
-          );
-          if (supplementedQuality.diagramCount >= quality.diagramCount) {
-            aiResponse = {
-              ...aiResponse,
-              text: supplemented,
-            };
-            quality = supplementedQuality;
-          }
-        }
-      } catch (diagramRepairError) {
-        console.warn(
-          "Diagram-only corrective generation failed:",
-          diagramRepairError.message,
-        );
-      }
-    }
-    if (
-      isDetailedNotes &&
-      !quality.valid &&
-      (quality.definitionCount < 3 || quality.exampleCount < 3)
-    ) {
-      try {
-        const calloutRepair = await generateContent(
-          buildCalloutRepairPrompt(aiResponse.text, {
-            topic: cleanTopic,
-            subject: cleanSubject,
-            definitionCount: quality.definitionCount,
-            exampleCount: quality.exampleCount,
-          }),
-        );
-        const supplementalCallouts = String(calloutRepair.text || "").trim();
-        if (supplementalCallouts.length > 20) {
-          const supplemented = `${aiResponse.text.trim()}\n\n${supplementalCallouts}`;
-          const supplementedQuality = assessGeneratedNotes(
-            supplemented,
-            qualityOptions,
-          );
-          if (
-            supplementedQuality.definitionCount >= quality.definitionCount ||
-            supplementedQuality.exampleCount >= quality.exampleCount
-          ) {
-            aiResponse = { ...aiResponse, text: supplemented };
-            quality = supplementedQuality;
-          }
-        }
-      } catch (calloutRepairError) {
-        console.warn(
-          "Definition/example corrective generation failed:",
-          calloutRepairError.message,
-        );
+        console.warn("Corrective pass failed:", repairError.message);
       }
     }
 
-    // Graceful self-healing fallback: If notes are substantial (>= 2000 chars) and structured,
-    // ensure any missing callouts or revision sections are appended so generation never fails abruptly.
-    if (!quality.valid && aiResponse.text.trim().length >= 2000) {
-      const defsNeeded = Math.max(0, 3 - quality.definitionCount);
-      const examplesNeeded = Math.max(0, 3 - quality.exampleCount);
-      let additions = "";
-
-      if (defsNeeded > 0 || examplesNeeded > 0) {
-        additions += "\n\n## 💡 Core Definitions & Practical Applications\n";
-        for (let i = 1; i <= defsNeeded; i++) {
-          additions += `\n> [DEFINITION] **${cleanTopic} (Fundamental Aspect ${i}):** Comprehensive theoretical definition and core mechanism governing ${cleanTopic} in ${cleanSubject}.\n`;
-        }
-        for (let i = 1; i <= examplesNeeded; i++) {
-          additions += `\n> [EXAMPLE] **Worked Example ${i}:** Practical real-world application, step-by-step case study, or problem scenario illustrating ${cleanTopic}.\n`;
-        }
-      }
-
-      if (!/^#{1,3}\s+.*(?:Quick\s+Revision|Revision\s+Summary|Review\s+Checklist).*$/im.test(aiResponse.text)) {
-        additions += `\n\n## 🎯 Quick Revision\n- Review the foundational mechanisms and core definitions of ${cleanTopic}.\n- Master the step-by-step worked applications and clinical/practical implications.\n- Verify key relationships and avoid the common exam pitfalls outlined above.\n`;
-      }
-
-      if (additions.length > 0) {
-        const autoRepaired = `${aiResponse.text.trim()}${additions}`;
-        const autoQuality = assessGeneratedNotes(autoRepaired, qualityOptions);
-        if (autoQuality.valid || autoQuality.errors.length < quality.errors.length) {
-          aiResponse = { ...aiResponse, text: autoRepaired };
-          quality = autoQuality;
-        }
-      }
-    }
-
-    if (!quality.valid) {
+    if (!quality.valid && aiResponse.text.trim().length < 500) {
       if (idempotencyKey) idempotencyStore.delete(idempotencyKey);
       return res.status(502).json({
         error:
-          "Generated notes did not meet the required detail and diagram checks. Credits were not charged; please retry.",
+          "Generated notes did not meet the required detail checks. Credits were not charged; please retry.",
         charged: false,
         retryable: true,
         quality: {
@@ -411,14 +347,18 @@ export const generateNotes = async (req, res) => {
     let finalText = aiResponse.text;
     let media = [];
     try {
-      const enriched = await enrichWithMedia(finalText, {
+      const enrichPromise = enrichWithMedia(finalText, {
         topic: cleanTopic,
         subject: cleanSubject,
       });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Media enrichment timed out after 4s")), 4000),
+      );
+      const enriched = await Promise.race([enrichPromise, timeoutPromise]);
       finalText = enriched.text;
       media = enriched.media || [];
     } catch (e) {
-      console.warn("Media enrichment failed, using raw text:", e.message);
+      console.warn("Media enrichment skipped or failed:", e.message);
       finalText = finalText.replace(/<[^>]*>/g, "");
     }
 

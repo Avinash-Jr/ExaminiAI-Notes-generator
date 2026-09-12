@@ -11,8 +11,8 @@ const OPENROUTER_CANDIDATE_MODELS = [
   "deepseek/deepseek-r1:free",
 ].filter(Boolean);
 
-const TIMEOUT_MS = 45000;
-const MAX_RETRIES = 2;
+const TIMEOUT_MS = 20000;
+const MAX_RETRIES = 1;
 const BASE_DELAY_MS = 1000;
 
 const isRetryableStatus = (status) =>

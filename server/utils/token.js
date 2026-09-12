@@ -1,11 +1,12 @@
-import jwt from "jsonwebtoken"
+import jwt from "jsonwebtoken";
 
 export const getToken = async (userId) => {
-    try {
-        const token = jwt.sign({userId}, process.env.JWT_SECRET, {expiresIn:"7d"})
-        console.log(token)
-        return token
-    } catch (error) {
-        console.error("Error while generating JWT Secret Token", error) 
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        // Fail loudly: a missing secret must never silently produce a
+        // tokenless "successful" login.
+        throw new Error("JWT_SECRET is not configured.");
     }
-}
+    // Never log tokens — they are live session credentials.
+    return jwt.sign({ userId }, secret, { expiresIn: "7d" });
+};

@@ -1,7 +1,12 @@
-const GROK_URL =
-  process.env.GROK_URL || "https://api.x.ai/v1/chat/completions";
+const GROK_URL = process.env.GROK_URL || "https://api.x.ai/v1/chat/completions";
 
-const GROK_MODEL = process.env.GROK_MODEL || "grok-3-mini-fast";
+const GROK_CANDIDATE_MODELS = [
+  process.env.GROK_MODEL,
+  "grok-2-latest",
+  "grok-beta",
+  "grok-4.5",
+].filter(Boolean);
+
 const TIMEOUT_MS = 35000;
 const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 1000;
@@ -28,16 +33,19 @@ export const generateGrokContent = async (prompt) => {
   }
 
   let cleanPrompt = prompt.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").trim();
-  const MAX_PROMPT_CHARS = 15000;
+  const MAX_PROMPT_CHARS = 70000;
   if (cleanPrompt.length > MAX_PROMPT_CHARS) {
     console.warn(
-      `[Grok] Prompt truncated from ${cleanPrompt.length} to ${MAX_PROMPT_CHARS} chars`
+      `[Grok] Prompt truncated from ${cleanPrompt.length} to ${MAX_PROMPT_CHARS} chars`,
     );
     cleanPrompt = cleanPrompt.slice(0, MAX_PROMPT_CHARS);
   }
 
   let lastError = null;
+  let modelIndex = 0;
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const activeModel = GROK_CANDIDATE_MODELS[modelIndex] || "grok-2-latest";
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
@@ -48,11 +56,11 @@ export const generateGrokContent = async (prompt) => {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: GROK_MODEL,
+          model: activeModel,
           messages: [{ role: "user", content: cleanPrompt }],
           temperature: 0.3,
           top_p: 0.9,
-          max_tokens: 8192,
+          max_tokens: 16384,
         }),
         signal: controller.signal,
       });
@@ -87,11 +95,20 @@ export const generateGrokContent = async (prompt) => {
         else err.statusCode = response.status;
         err.upstreamStatus = response.status;
 
+        if ((response.status === 404 || response.status === 400) && modelIndex < GROK_CANDIDATE_MODELS.length - 1) {
+          modelIndex++;
+          console.warn(
+            `[Grok] Model ${activeModel} failed with ${response.status}. Trying candidate model: ${GROK_CANDIDATE_MODELS[modelIndex]}`,
+          );
+          lastError = err;
+          continue;
+        }
+
         if (isRetryableStatus(response.status) && attempt < MAX_RETRIES) {
           const delay =
             BASE_DELAY_MS * Math.pow(2, attempt) + Math.random() * 250;
           console.warn(
-            `[Grok] Retry ${attempt + 1}/${MAX_RETRIES} after ${response.status} — waiting ${Math.round(delay)}ms`
+            `[Grok] Retry ${attempt + 1}/${MAX_RETRIES} after ${response.status} — waiting ${Math.round(delay)}ms`,
           );
           await sleep(delay);
           lastError = err;
@@ -106,16 +123,14 @@ export const generateGrokContent = async (prompt) => {
         if (attempt < MAX_RETRIES) {
           const delay = BASE_DELAY_MS * Math.pow(2, attempt);
           console.warn(
-            `[Grok] Empty response, retry ${attempt + 1}/${MAX_RETRIES}`
+            `[Grok] Empty response, retry ${attempt + 1}/${MAX_RETRIES}`,
           );
           await sleep(delay);
           lastError = new Error("Grok returned an empty response.");
           lastError.statusCode = 502;
           continue;
         }
-        const err = new Error(
-          "Grok returned an empty response after retries."
-        );
+        const err = new Error("Grok returned an empty response after retries.");
         err.statusCode = 502;
         throw err;
       }
@@ -125,7 +140,7 @@ export const generateGrokContent = async (prompt) => {
       clearTimeout(timeout);
       if (error.name === "AbortError") {
         const timeoutErr = new Error(
-          `Grok request timed out after ${TIMEOUT_MS}ms`
+          `Grok request timed out after ${TIMEOUT_MS}ms`,
         );
         timeoutErr.statusCode = 504;
         if (attempt < MAX_RETRIES) {
@@ -140,7 +155,7 @@ export const generateGrokContent = async (prompt) => {
         if (attempt < MAX_RETRIES) {
           const delay = BASE_DELAY_MS * Math.pow(2, attempt);
           console.warn(
-            `[Grok] Network error retry ${attempt + 1}/${MAX_RETRIES}: ${error.message}`
+            `[Grok] Network error retry ${attempt + 1}/${MAX_RETRIES}: ${error.message}`,
           );
           await sleep(delay);
           lastError = error;

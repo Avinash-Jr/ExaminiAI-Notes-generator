@@ -24,46 +24,71 @@ async function fetchWithTimeout(url, opts = {}) {
 /**
  * Search Wikimedia Commons for images matching q and return up to `limit`
  * direct image URLs (upload.wikimedia.org). Filters to jpg/png/webp.
+ * Uses tiered query simplification to ensure relevant images are discovered.
  */
 export async function fetchWikimediaImages(q, limit = 3) {
-  const key = `${q}::${limit}`;
+  if (!q || !q.trim()) return [];
+  const rawQuery = q.trim();
+  const key = `${rawQuery}::${limit}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL) return hit.urls;
 
-  try {
-    // 1) search file namespace
-    const searchUrl = `${WIKI_SEARCH}?action=query&list=search&srsearch=${encodeURIComponent(q)}&srnamespace=6&srlimit=${limit * 2}&format=json${WIKI_ORIGIN}`;
-    const sr = await fetchWithTimeout(searchUrl);
-    if (!sr.ok) return [];
-    const sj = await sr.json();
-    const titles = (sj?.query?.search || []).map(s => s.title).filter(Boolean).slice(0, limit * 2);
-    if (!titles.length) return [];
-
-    // 2) resolve to imageinfo
-    const titlesParam = titles.map(t => encodeURIComponent(t)).join("|");
-    const infoUrl = `${WIKI_SEARCH}?action=query&titles=${titlesParam}&prop=imageinfo&iiprop=url|mime&format=json${WIKI_ORIGIN}`;
-    const ir = await fetchWithTimeout(infoUrl);
-    if (!ir.ok) return [];
-    const ij = await ir.json();
-    const pages = Object.values(ij?.query?.pages || {});
-    const urls = [];
-    for (const p of pages) {
-      const info = p?.imageinfo?.[0];
-      const url = info?.url || "";
-      const mime = info?.mime || "";
-      if (!url) continue;
-      if (!/^https:\/\//.test(url)) continue;
-      if (mime && !/image\/(jpeg|png|webp|svg\+xml)/.test(mime)) continue;
-      // prefer raster for pdfkit (svg needs conversion); keep svg for web but limit
-      urls.push({ url, title: p.title?.replace(/^File:/, "") || q, mime });
-      if (urls.length >= limit) break;
-    }
-    cache.set(key, { urls, at: Date.now() });
-    return urls;
-  } catch (e) {
-    console.warn("fetchWikimediaImages failed for", q, e.message);
-    return [];
+  // Build tiered candidate queries to maximize hit rate
+  const words = rawQuery.replace(/[^\w\s]/g, "").split(/\s+/).filter(Boolean);
+  const candidateQueries = [rawQuery];
+  if (words.length > 2) {
+    candidateQueries.push(words.slice(0, 2).join(" "));
   }
+  if (words.length > 3) {
+    candidateQueries.push(words.slice(0, 3).join(" "));
+  }
+  if (words.length > 0 && words[0].length > 3) {
+    candidateQueries.push(words[0]);
+  }
+
+  const seenUrls = new Set();
+  const collected = [];
+
+  for (const candidate of candidateQueries) {
+    try {
+      const searchUrl = `${WIKI_SEARCH}?action=query&list=search&srsearch=${encodeURIComponent(candidate)}&srnamespace=6&srlimit=${limit * 2}&format=json${WIKI_ORIGIN}`;
+      const sr = await fetchWithTimeout(searchUrl);
+      if (!sr.ok) continue;
+      const sj = await sr.json();
+      const titles = (sj?.query?.search || []).map((s) => s.title).filter(Boolean).slice(0, limit * 2);
+      if (!titles.length) continue;
+
+      const titlesParam = titles.map((t) => encodeURIComponent(t)).join("|");
+      const infoUrl = `${WIKI_SEARCH}?action=query&titles=${titlesParam}&prop=imageinfo&iiprop=url|mime&format=json${WIKI_ORIGIN}`;
+      const ir = await fetchWithTimeout(infoUrl);
+      if (!ir.ok) continue;
+      const ij = await ir.json();
+      const pages = Object.values(ij?.query?.pages || {});
+      for (const p of pages) {
+        const info = p?.imageinfo?.[0];
+        const url = info?.url || "";
+        const mime = info?.mime || "";
+        if (!url || seenUrls.has(url)) continue;
+        if (!/^https:\/\//.test(url)) continue;
+        if (mime && !/image\/(jpeg|png|webp|svg\+xml)/.test(mime)) continue;
+        seenUrls.add(url);
+        collected.push({
+          url,
+          title: p.title?.replace(/^File:/, "") || candidate,
+          mime,
+        });
+        if (collected.length >= limit) break;
+      }
+      if (collected.length >= limit) break;
+    } catch {
+      // try next candidate
+    }
+  }
+
+  if (collected.length) {
+    cache.set(key, { urls: collected, at: Date.now() });
+  }
+  return collected;
 }
 
 /**
@@ -84,17 +109,23 @@ export async function enrichWithMedia(text, { topic, subject }) {
   for (const m of markers) {
     const query = m[1].trim().slice(0, 80);
     const caption = m[2].trim().slice(0, 160);
-    const hits = await fetchWikimediaImages(query || topic, 1);
+
+    // Try query first, fallback to topic or subject if empty
+    let hits = await fetchWikimediaImages(query, 1);
+    if (!hits.length && topic) {
+      hits = await fetchWikimediaImages(topic, 1);
+    }
+    if (!hits.length && subject) {
+      hits = await fetchWikimediaImages(`${subject} ${topic}`.slice(0, 60), 1);
+    }
+
     if (hits.length) {
       const img = hits[0];
       media.push({ url: img.url, caption, query, title: img.title });
-      // Replace marker with standard markdown image — client renders as real <img>
-      out = out.replace(m[0], `![${caption}](${img.url})`);
+      out = out.replace(m[0], `\n\n![${caption}](${img.url})\n*Figure Reference: ${caption}*\n\n`);
     } else {
-      // No image found — replace marker with just the caption (no broken HTML)
-      out = out.replace(m[0], `*${caption}*`);
+      out = out.replace(m[0], `\n> 🖼️ **Figure Reference:** *${caption}*\n`);
     }
-    // Be nice to Wikimedia
     await sleep(120);
   }
 
@@ -103,12 +134,17 @@ export async function enrichWithMedia(text, { topic, subject }) {
     const q = `${subject || ""} ${topic}`.trim().slice(0, 80) || topic;
     const extra = await fetchWikimediaImages(q, 2);
     for (const img of extra) {
-      media.push({ url: img.url, caption: img.title, query: q, title: img.title });
+      media.push({
+        url: img.url,
+        caption: img.title,
+        query: q,
+        title: img.title,
+      });
     }
-    // Append gallery as markdown images at end of Quick Revision if we found any
     if (extra.length) {
-      const galleryMd = `\n\n---\n\n**Illustrations**\n\n` + extra.map(e => `![${e.title}](${e.url})`).join("\n\n");
-      // Only append if Quick Revision exists, otherwise at end
+      const galleryMd =
+        `\n\n---\n\n**Visual Reference Gallery**\n\n` +
+        extra.map((e) => `![${e.title}](${e.url})\n*${e.title}*`).join("\n\n");
       out = out.trimEnd() + galleryMd;
     }
   }

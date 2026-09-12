@@ -1,10 +1,26 @@
-﻿// Gemini API integration — production hardened
+// Gemini API integration — production hardened
 // BEFORE: model "gemini-3.5-flash" did not exist → 404 on every call
 // AFTER: "gemini-1.5-flash" + timeout + retry + parsing + sanitization
 
-const GEMINI_URL =
-  process.env.GEMINI_URL ||
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent";
+const CANDIDATE_MODELS = [
+  process.env.GEMINI_MODEL,
+  "gemini-3.1-flash-lite",
+  "gemini-3.1-pro",
+  "gemini-3.0-pro",
+  "gemini-3.0-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+].filter(Boolean);
+
+const getGeminiEndpoint = (modelIndex = 0) => {
+  if (process.env.GEMINI_URL && modelIndex === 0) {
+    return process.env.GEMINI_URL;
+  }
+  const modelName = CANDIDATE_MODELS[modelIndex] || "gemini-3.1-flash-lite";
+  return `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+};
 
 const TIMEOUT_MS = 30000;
 const MAX_RETRIES = 3;
@@ -23,9 +39,9 @@ export const generateGeminiContent = async (prompt) => {
     throw err;
   }
 
-  // Sanitize: strip control chars, cap length to avoid API truncation/400
+  // Sanitize control characters while allowing the full structured prompt and reference context through.
   let cleanPrompt = prompt.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").trim();
-  const MAX_PROMPT_CHARS = 15000;
+  const MAX_PROMPT_CHARS = 70000;
   if (cleanPrompt.length > MAX_PROMPT_CHARS) {
     console.warn(
       `Prompt truncated from ${cleanPrompt.length} to ${MAX_PROMPT_CHARS} chars`,
@@ -42,12 +58,15 @@ export const generateGeminiContent = async (prompt) => {
   }
 
   let lastError = null;
+  let modelIndex = 0;
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const targetUrl = getGeminiEndpoint(modelIndex);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
       const response = await fetch(
-        `${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`,
+        `${targetUrl}?key=${encodeURIComponent(apiKey)}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -56,7 +75,7 @@ export const generateGeminiContent = async (prompt) => {
             generationConfig: {
               temperature: 0.3,
               topP: 0.9,
-              maxOutputTokens: 8192,
+              maxOutputTokens: 16384,
             },
           }),
           signal: controller.signal,
@@ -101,6 +120,18 @@ export const generateGeminiContent = async (prompt) => {
           err.message =
             "Request blocked by content safety filters. Please rephrase your topic.";
         }
+        if (
+          response.status === 404 &&
+          modelIndex < CANDIDATE_MODELS.length - 1
+        ) {
+          modelIndex++;
+          console.warn(
+            `Gemini model ${getGeminiEndpoint(modelIndex - 1)} returned 404. Falling back to candidate model: ${getGeminiEndpoint(modelIndex)}`,
+          );
+          lastError = err;
+          continue;
+        }
+
         if (isRetryableStatus(response.status) && attempt < MAX_RETRIES) {
           const delay =
             BASE_DELAY_MS * Math.pow(2, attempt) + Math.random() * 250;

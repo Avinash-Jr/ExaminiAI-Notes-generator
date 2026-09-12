@@ -1,2 +1,21 @@
 node_modules
 .env
+.env.local
+.env.*.local
+
+# Build output
+dist
+build
+
+# Backups & scratch/diagnostic files
+*.bak
+_diag*
+
+# Logs
+*.log
+npm-debug.log*
+logs
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

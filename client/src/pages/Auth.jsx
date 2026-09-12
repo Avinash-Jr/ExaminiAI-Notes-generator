@@ -76,12 +76,16 @@ function Auth() {
         throw new Error("Google account did not return an email address.");
       }
 
+      // The ID token is what the backend verifies — never trust email/name alone.
+      const idToken = await firebaseUser.getIdToken();
+
       // 2. Send authenticated user to your backend
       console.log("🔵 Sending user to backend...");
 
       const result = await axios.post(
         `${serverUrl}/api/auth/googleAuth`,
         {
+          idToken,
           name,
           email,
         },

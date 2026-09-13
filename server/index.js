@@ -96,7 +96,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
 
 // Cap JSON body size to blunt trivial DoS via oversized payloads.
 app.use(express.json({ limit: "1mb" }));

@@ -117,12 +117,32 @@ export const generateNotes = async (req, res) => {
 
     const cleanTopic = topic.trim().slice(0, 500);
     const cleanSubject = subject.trim().slice(0, 200);
-    const cleanDomain = String(domain || "general").trim().toLowerCase().slice(0, 50);
-    const cleanAudience = String(audienceLevel || "intermediate").trim().toLowerCase();
-    const cleanExamples = String(examplePreference || "balanced").trim().toLowerCase();
-    const cleanDepth = String(depthLevel || "rigorous").trim().toLowerCase();
+    const VALID_DOMAINS = ["stem", "humanities", "business", "social-sciences", "arts", "medicine", "law", "general"];
+    const cleanDomain = VALID_DOMAINS.includes(String(domain || "").trim().toLowerCase())
+      ? String(domain).trim().toLowerCase()
+      : "general";
+
+    const VALID_AUDIENCES = ["beginner", "intermediate", "advanced", "expert"];
+    const cleanAudience = VALID_AUDIENCES.includes(String(audienceLevel || "").trim().toLowerCase())
+      ? String(audienceLevel).trim().toLowerCase()
+      : "intermediate";
+
+    const VALID_EXAMPLES = ["theoretical", "applied", "balanced", "case-studies"];
+    const cleanExamples = VALID_EXAMPLES.includes(String(examplePreference || "").trim().toLowerCase())
+      ? String(examplePreference).trim().toLowerCase()
+      : "balanced";
+
+    const VALID_DEPTHS = ["intuitive", "rigorous", "deep-technical"];
+    const cleanDepth = VALID_DEPTHS.includes(String(depthLevel || "").trim().toLowerCase())
+      ? String(depthLevel).trim().toLowerCase()
+      : "rigorous";
+
     const cleanCustom = typeof customInstructions === "string" ? customInstructions.trim().slice(0, 2000) : "";
-    const cleanModule = String(moduleType || "standard").trim().toLowerCase();
+
+    const VALID_MODULES = ["quick-summary", "standard", "comprehensive", "custom"];
+    const cleanModule = VALID_MODULES.includes(String(moduleType || "").trim().toLowerCase())
+      ? String(moduleType).trim().toLowerCase()
+      : "standard";
 
     const parsedObjectives = parseArrayField(learningObjectives);
     const parsedPrerequisites = parseArrayField(prerequisites);

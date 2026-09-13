@@ -16,8 +16,8 @@ const getGeminiEndpoint = (modelIndex = 0) => {
   return `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 };
 
-const TIMEOUT_MS = 40000;
-const MAX_RETRIES = 2;
+const TIMEOUT_MS = 60000;
+const MAX_RETRIES = 1;
 const BASE_DELAY_MS = 1000;
 
 const isRetryableStatus = (status) =>

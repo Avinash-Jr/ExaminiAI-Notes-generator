@@ -305,7 +305,7 @@ export const generateNotes = async (req, res) => {
     }
 
     // Only if notes are severely deficient (< 1200 chars) do we attempt a single corrective pass
-    if (!quality.valid) {
+    if (!quality.valid && aiResponse.text.trim().length < 1200) {
       console.warn(
         "Notes critically deficient, requesting one single corrective pass:",
         quality.errors,

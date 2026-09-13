@@ -52,7 +52,7 @@ export const generateNotes = async (payload, files = []) => {
       data,
       {
         withCredentials: true,
-        timeout: 95000,
+        timeout: 120000,
         headers,
       },
     );

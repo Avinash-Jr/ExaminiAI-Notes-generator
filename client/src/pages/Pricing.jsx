@@ -1,174 +1,369 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { FiCheck, FiArrowRight, FiHelpCircle } from "react-icons/fi";
+import { FiCheck, FiArrowRight, FiZap, FiAward, FiShield } from "react-icons/fi";
+import Navbar from "../components/Navbar.jsx";
+import Footer from "../components/Footer.jsx";
 
-import Button from "../components/ui/Button.jsx";
-import Container from "../components/ui/Container.jsx";
-import PageHeader from "../components/ui/PageHeader.jsx";
-import Panel from "../components/ui/Panel.jsx";
-
-const packs = [
+const creditPacks = [
   {
     id: "starter",
-    name: "Starter",
+    name: "Starter Pack",
     credits: 120,
     price: 199,
     priceLabel: "₹199",
+    tagline: "Perfect for single subject exam prep",
     popular: false,
-    bullets: ["120 credits", "About 17 sets of notes", "Revision notes & summaries", "PDF export"],
+    bullets: [
+      "120 AI Note Credits",
+      "~18 full chapter study sets",
+      "Cornell note generation",
+      "Instant PDF & text export",
+      "Never expires",
+    ],
     href: "/payment?pack=starter",
   },
   {
     id: "popular",
-    name: "Popular",
-    credits: 300,
+    name: "Scholar Pro",
+    credits: 350,
     price: 399,
     priceLabel: "₹399",
+    tagline: "Most popular for semester finals",
     popular: true,
-    bullets: ["300 credits", "About 42 sets of notes", "Everything in Starter", "Diagrams & visuals included", "Priority generation queue"],
+    bullets: [
+      "350 AI Note Credits",
+      "~50 complete chapter study packs",
+      "ASCII & Flowchart diagrams included",
+      "Formula & cheat sheet generation",
+      "Priority AI queue (2x faster)",
+      "Never expires",
+    ],
     href: "/payment?pack=popular",
   },
   {
     id: "pro",
-    name: "Pro",
-    credits: 650,
-    price: 699,
-    priceLabel: "₹699",
+    name: "Campus Bulk",
+    credits: 800,
+    price: 749,
+    priceLabel: "₹749",
+    tagline: "Best value for competitive exams",
     popular: false,
-    bullets: ["650 credits", "About 92 sets of notes", "Everything in Popular", "Best per-credit value", "Sharable team credits (soon)"],
+    bullets: [
+      "800 AI Note Credits",
+      "~120 deep-dive study packs",
+      "Everything in Scholar Pro",
+      "LaTeX math equations support",
+      "Highest per-credit savings (55% off)",
+      "Sharable team pool access",
+    ],
+    href: "/payment?pack=pro",
+  },
+];
+
+const subscriptions = [
+  {
+    id: "monthly_free",
+    name: "Free Tier",
+    priceLabel: "₹0",
+    period: "/month",
+    tagline: "Start learning with zero commitment",
+    popular: false,
+    bullets: [
+      "100 initial free credits",
+      "Standard balanced note format",
+      "Web reading & PDF downloads",
+      "Community support",
+    ],
+    ctaText: "Current Plan",
+    href: "/topic-form",
+  },
+  {
+    id: "monthly_pro",
+    name: "Unlimited Pro",
+    priceLabel: "₹499",
+    period: "/month",
+    tagline: "For students with weekly exams",
+    popular: true,
+    bullets: [
+      "1,000 monthly credits refreshed automatically",
+      "Unlimited Cornell & cram note generation",
+      "All visual diagrams & formula sheets",
+      "High-speed generation priority",
+      "Roll-over unused credits",
+    ],
+    ctaText: "Upgrade to Pro",
+    href: "/payment?pack=popular",
+  },
+  {
+    id: "annual_pro",
+    name: "Annual Scholar",
+    priceLabel: "₹3,999",
+    period: "/year",
+    savings: "Save 33%",
+    tagline: "The complete academic year companion",
+    popular: false,
+    bullets: [
+      "15,000 credits allocated instantly",
+      "Everything in Unlimited Pro",
+      "Team / Study Group workspace sharing (up to 3 peers)",
+      "Custom exam syllabus tailoring",
+      "VIP customer support",
+    ],
+    ctaText: "Subscribe Annually",
     href: "/payment?pack=pro",
   },
 ];
 
 const faqs = [
   {
-    q: "What does one generation cost?",
-    a: "About 7 credits for Balanced notes (the default). Tight costs 5, Thorough costs 10; add 3 more when you include diagrams. Search, reading and re-downloading never cost anything.",
+    q: "How are credits consumed during generation?",
+    a: "Standard balanced notes cost 7 credits. Concise revision cram sheets cost 5 credits, and exhaustive comprehensive guides cost 10 credits. Adding ASCII diagrams adds 3 credits.",
   },
   {
-    q: "Do credits expire?",
-    a: "Purchased credits do not expire while your account is open. Free starter credits carry the same rule. Closing your account removes remaining credits.",
+    q: "Do purchased credits expire?",
+    a: "No. Purchased credit packs have no expiration date as long as your account remains open. You can use them across multiple semesters at your own pace.",
   },
   {
-    q: "What if generation fails?",
-    a: "A failed generation returns its credits automatically so you can retry. The history page shows exactly what was charged on each attempt.",
+    q: "What payment methods are supported?",
+    a: "We support UPI (Google Pay, PhonePe, Paytm), credit and debit cards (Visa, Mastercard, RuPay), and net banking through secure payment gateway integration.",
   },
   {
-    q: "How does the payment work?",
-    a: "Cards (Visa/Mastercard/RuPay) and UPI are accepted. Payment is simulated in this preview build — no real money is charged — and credits are added instantly. Production will use Razorpay/Stripe.",
-  },
-  {
-    q: "Can I get a refund?",
-    a: "Unused purchased credits are refundable within 7 days of purchase. Spent credits are not. Contact support@examinai.app for help.",
+    q: "Can I get a refund if I'm not satisfied?",
+    a: "We offer a 7-day money-back guarantee on unused purchased credits. If you haven't used your pack, reach out to our team for a prompt refund.",
   },
 ];
 
 export default function Pricing() {
   const { userData } = useSelector((s) => s.user);
   const navigate = useNavigate();
+  const [tab, setTab] = useState("packs"); // 'packs' or 'sub'
 
   return (
-    <Container className="py-14 sm:py-20">
-      <PageHeader
-        title="Pricing"
-        standfirst="Credits buy generations. Reading, searching and downloading what you already have is always free."
-        meta={[
-          { label: "Free to start", value: "100 credits" },
-          { label: "Each set", value: "from 5 credits" },
-        ]}
-        actions={
-          userData ? (
-            <Button variant="outline" onClick={() => navigate("/settings")}>
-              Your balance: {userData.credits ?? 0} credits
-            </Button>
-          ) : (
-            <Button as={Link} to="/auth" variant="outline">
-              Sign in to buy
-            </Button>
-          )
-        }
-      />
+    <div className="min-h-screen bg-sheet text-ink transition-colors">
+      <Navbar />
 
-      <div className="mt-10 grid gap-6 sm:gap-5 md:grid-cols-3">
-        {packs.map((pack) => (
-          <Panel
-            key={pack.id}
-            surface={pack.popular ? "panel" : "sheet"}
-            padding="roomy"
-            className={
-              pack.popular
-                ? "relative -translate-y-1 shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
-                : ""
-            }
-          >
-            {pack.popular ? (
-              <span className="absolute -top-3 right-6 rounded-full bg-brand px-3 py-1 text-xs font-bold text-white shadow">
-                Most chosen
-              </span>
-            ) : null}
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
+        {/* Header Title & Pitch */}
+        <div className="text-center max-w-3xl mx-auto">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft border border-brand/20 px-3.5 py-1 text-xs font-semibold text-brand">
+            <FiAward className="size-3.5" /> Transparent Academic Pricing
+          </span>
+          <h1 className="mt-4 text-4xl sm:text-5xl font-extrabold text-display tracking-tight text-ink">
+            Pay only for the notes you need.
+          </h1>
+          <p className="mt-4 text-base sm:text-lg text-ink-2">
+            No sneaky hidden fees. Reading, searching, and re-downloading previously generated notes is always 100% free.
+          </p>
 
-            <p className={pack.popular ? "text-sm font-semibold text-amber-200" : "text-sm font-semibold text-brand"}>
-              {pack.name}
-            </p>
-
-            <p className={pack.popular ? "mt-2 text-4xl font-extrabold tracking-tight text-white" : "mt-2 text-4xl font-extrabold tracking-tight text-ink"}>
-              {pack.priceLabel}
-              <span className={pack.popular ? "ml-2 text-sm font-normal text-white/70" : "ml-2 text-sm font-normal text-ink-3"}>
-                one-time
-              </span>
-            </p>
-
-            <p className={pack.popular ? "mt-2 text-sm text-white/60" : "mt-2 text-sm text-ink-3"}>
-              {pack.credits} credits — roughly {Math.floor(pack.credits / 7)} sets of notes
-            </p>
-
-            <ul className="mt-6 space-y-2.5">
-              {pack.bullets.map((line) => (
-                <li key={line} className="flex gap-2.5 text-sm">
-                  <FiCheck aria-hidden="true" className={pack.popular ? "mt-0.5 shrink-0 text-amber-300" : "mt-0.5 shrink-0 text-brand"} />
-                  <span className={pack.popular ? "text-white/90" : "text-ink-2"}>{line}</span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-8">
-              <Button as={Link} to={pack.href} variant={pack.popular ? "accent" : "solid"} className="w-full justify-center">
-                Buy {pack.name} <FiArrowRight aria-hidden="true" />
-              </Button>
+          {/* Current balance indicator for logged-in users */}
+          {userData && (
+            <div className="mt-6 inline-flex items-center gap-2 rounded-xl border border-line bg-band px-4 py-2 text-xs font-semibold">
+              <span className="text-ink-3">Current Account Balance:</span>
+              <span className="text-brand font-bold" data-numeric>{userData.credits ?? 0} Credits</span>
+              <span className="text-ink-3">•</span>
+              <Link to="/history" className="text-ink hover:underline">
+                View Usage Log →
+              </Link>
             </div>
+          )}
 
-            <p className={pack.popular ? "mt-3 text-center text-xs text-white/50" : "mt-3 text-center text-xs text-ink-3"}>
-              Mock payment — no real charge in preview
-            </p>
-          </Panel>
-        ))}
-      </div>
-
-      <Panel surface="tint" padding="snug" className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-ink-2">
-          Included with every pack: unlimited reading, searching, PDF downloads and history.
-        </p>
-        <Link to="/about" className="text-sm font-semibold text-brand underline decoration-1 underline-offset-4 hover:text-brand-deep">
-          How ExaminAI works →
-        </Link>
-      </Panel>
-
-      <section aria-labelledby="faq-heading" className="mt-16">
-        <h2 id="faq-heading" className="flex items-center gap-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-          <FiHelpCircle aria-hidden="true" className="text-brand" /> Questions
-        </h2>
-        <div className="mt-6 divide-y divide-line rounded-panel border border-line bg-sheet">
-          {faqs.map((item) => (
-            <div key={item.q} className="p-6 sm:p-7">
-              <h3 className="font-semibold text-ink">{item.q}</h3>
-              <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-ink-2">{item.a}</p>
-            </div>
-          ))}
+          {/* Model Switcher Pill */}
+          <div className="mt-10 inline-flex items-center rounded-2xl border border-line bg-band p-1 shadow-xs">
+            <button
+              type="button"
+              onClick={() => setTab("packs")}
+              className={`rounded-xl px-5 py-2.5 text-xs font-semibold transition-all ${
+                tab === "packs"
+                  ? "bg-sheet text-ink shadow-xs"
+                  : "text-ink-3 hover:text-ink"
+              }`}
+            >
+              Credit Packs (Pay-As-You-Go)
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("sub")}
+              className={`rounded-xl px-5 py-2.5 text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                tab === "sub"
+                  ? "bg-sheet text-ink shadow-xs"
+                  : "text-ink-3 hover:text-ink"
+              }`}
+            >
+              <span>Monthly Plans</span>
+              <span className="rounded-full bg-emerald-500/10 text-emerald-600 px-1.5 py-0.2 text-[10px]">
+                Save 30%
+              </span>
+            </button>
+          </div>
         </div>
-        <p className="mt-6 text-sm text-ink-3">
-          Still deciding? Read the <Link to="/terms" className="font-semibold text-brand underline decoration-1 underline-offset-4 hover:text-brand-deep">terms</Link> on credits first.
-        </p>
-      </section>
-    </Container>
+
+        {/* Pricing Cards Grid */}
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+          {tab === "packs"
+            ? creditPacks.map((pack) => (
+                <div
+                  key={pack.id}
+                  className={`flex flex-col justify-between rounded-3xl p-8 transition-all relative ${
+                    pack.popular
+                      ? "bg-ink text-sheet border-2 border-brand shadow-panel md:-translate-y-2"
+                      : "bg-surface border border-line shadow-card text-ink"
+                  }`}
+                >
+                  {pack.popular && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-brand px-4 py-1 text-[11px] font-bold text-white uppercase tracking-wider shadow-sm">
+                      Most Popular Pack
+                    </div>
+                  )}
+
+                  <div>
+                    <h3 className={`text-xl font-bold ${pack.popular ? "text-white" : "text-ink"}`}>
+                      {pack.name}
+                    </h3>
+                    <p className={`text-xs mt-1 ${pack.popular ? "text-gray-300" : "text-ink-3"}`}>
+                      {pack.tagline}
+                    </p>
+
+                    <div className="mt-6 flex items-baseline gap-2">
+                      <span className="text-4xl font-extrabold text-display" data-numeric>
+                        {pack.priceLabel}
+                      </span>
+                      <span className={`text-xs font-medium ${pack.popular ? "text-gray-400" : "text-ink-3"}`}>
+                        one-time
+                      </span>
+                    </div>
+
+                    <div className="my-6 border-t border-line/40" />
+
+                    <ul className="space-y-3">
+                      {pack.bullets.map((b) => (
+                        <li key={b} className="flex items-start gap-2.5 text-xs">
+                          <FiCheck className={`size-4 shrink-0 mt-0.5 ${pack.popular ? "text-amber-400" : "text-brand"}`} />
+                          <span className={pack.popular ? "text-gray-200" : "text-ink-2"}>{b}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="mt-8 pt-6 border-t border-line/30">
+                    <button
+                      type="button"
+                      onClick={() => navigate(pack.href)}
+                      className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all ${
+                        pack.popular
+                          ? "bg-brand hover:bg-brand-deep text-white shadow-md active:scale-[0.98]"
+                          : "bg-ink hover:opacity-90 text-sheet active:scale-[0.98]"
+                      }`}
+                    >
+                      <span>Buy {pack.credits} Credits</span>
+                      <FiArrowRight className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            : subscriptions.map((sub) => (
+                <div
+                  key={sub.id}
+                  className={`flex flex-col justify-between rounded-3xl p-8 transition-all relative ${
+                    sub.popular
+                      ? "bg-ink text-sheet border-2 border-brand shadow-panel md:-translate-y-2"
+                      : "bg-surface border border-line shadow-card text-ink"
+                  }`}
+                >
+                  {sub.popular && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-brand px-4 py-1 text-[11px] font-bold text-white uppercase tracking-wider shadow-sm">
+                      Best Academic Value
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <h3 className={`text-xl font-bold ${sub.popular ? "text-white" : "text-ink"}`}>
+                        {sub.name}
+                      </h3>
+                      {sub.savings && (
+                        <span className="rounded-full bg-emerald-500/20 text-emerald-400 px-2.5 py-0.5 text-[10px] font-bold">
+                          {sub.savings}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className={`text-xs mt-1 ${sub.popular ? "text-gray-300" : "text-ink-3"}`}>
+                      {sub.tagline}
+                    </p>
+
+                    <div className="mt-6 flex items-baseline gap-1">
+                      <span className="text-4xl font-extrabold text-display" data-numeric>
+                        {sub.priceLabel}
+                      </span>
+                      <span className={`text-xs font-medium ${sub.popular ? "text-gray-400" : "text-ink-3"}`}>
+                        {sub.period}
+                      </span>
+                    </div>
+
+                    <div className="my-6 border-t border-line/40" />
+
+                    <ul className="space-y-3">
+                      {sub.bullets.map((b) => (
+                        <li key={b} className="flex items-start gap-2.5 text-xs">
+                          <FiCheck className={`size-4 shrink-0 mt-0.5 ${sub.popular ? "text-amber-400" : "text-brand"}`} />
+                          <span className={sub.popular ? "text-gray-200" : "text-ink-2"}>{b}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="mt-8 pt-6 border-t border-line/30">
+                    <button
+                      type="button"
+                      onClick={() => navigate(sub.href)}
+                      className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all ${
+                        sub.popular
+                          ? "bg-brand hover:bg-brand-deep text-white shadow-md active:scale-[0.98]"
+                          : "bg-ink hover:opacity-90 text-sheet active:scale-[0.98]"
+                      }`}
+                    >
+                      <span>{sub.ctaText}</span>
+                      <FiArrowRight className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+        </div>
+
+        {/* Security & Guarantee Guarantee Strip */}
+        <div className="mt-16 rounded-2xl border border-line bg-band p-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-ink-3">
+          <div className="flex items-center gap-2">
+            <FiShield className="size-4 text-emerald-500" />
+            <span>256-Bit SSL Encrypted Checkout via Razorpay / Stripe</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FiZap className="size-4 text-amber-500" />
+            <span>Credits loaded to your account instantly</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FiAward className="size-4 text-brand" />
+            <span>7-day refund guarantee for unused credits</span>
+          </div>
+        </div>
+
+        {/* Pricing FAQs */}
+        <div className="mt-20 max-w-3xl mx-auto">
+          <h2 className="text-2xl font-bold text-center text-ink text-display mb-8">
+            Frequently Asked Pricing Questions
+          </h2>
+          <div className="space-y-4">
+            {faqs.map((faq) => (
+              <div key={faq.q} className="rounded-2xl border border-line bg-surface p-5 shadow-xs">
+                <h3 className="text-sm font-bold text-ink">{faq.q}</h3>
+                <p className="mt-2 text-xs sm:text-sm text-ink-2 leading-relaxed">{faq.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
   );
 }

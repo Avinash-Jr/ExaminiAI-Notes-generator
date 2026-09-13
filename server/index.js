@@ -10,6 +10,8 @@ import notesRouter from "./routes/notes.route.js";
 import paymentRouter from "./routes/payment.route.js";
 import activityRouter from "./routes/activity.route.js";
 import contactRouter from "./routes/contact.route.js";
+import orgRouter from "./routes/org.route.js";
+import billingRouter from "./routes/billing.route.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 
 dotenv.config();
@@ -65,6 +67,8 @@ app.use("/api/notes", notesRouter);     // User notes retrieval route
 app.use("/api/payment", rateLimit({ windowMs: 60_000, max: 30, name: "payment" }), paymentRouter); // Payment & credit purchase route
 app.use("/api/activity", activityRouter); // User activity history
 app.use("/api/contact", rateLimit({ windowMs: 60_000, max: 10, name: "contact" }), contactRouter);   // Contact form submissions
+app.use("/api/org", orgRouter);           // Multi-tenant workspaces & teams
+app.use("/api/billing", billingRouter);   // Subscriptions & billing history
 
 app.get("/", (req, res) => {
     res.status(200).json({

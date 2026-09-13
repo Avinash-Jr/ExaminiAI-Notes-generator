@@ -269,3 +269,33 @@ export const getActivity = async (opts = {}) => {
     throw error;
   }
 };
+
+export const getBillingSummary = async () => {
+  try {
+    const res = await axios.get(`${serverUrl}/api/billing/summary`, { withCredentials: true });
+    return res.data.billing;
+  } catch (err) {
+    console.error("Failed to load billing summary:", err);
+    return null;
+  }
+};
+
+export const getMyOrgs = async () => {
+  try {
+    const res = await axios.get(`${serverUrl}/api/org/my-orgs`, { withCredentials: true });
+    return res.data.orgs;
+  } catch (err) {
+    console.error("Failed to fetch orgs:", err);
+    return [];
+  }
+};
+
+export const createOrg = async (name) => {
+  const res = await axios.post(`${serverUrl}/api/org/create`, { name }, { withCredentials: true });
+  return res.data.org;
+};
+
+export const inviteOrgMember = async (orgId, email, role = "member") => {
+  const res = await axios.post(`${serverUrl}/api/org/${orgId}/invite`, { email, role }, { withCredentials: true });
+  return res.data.membership;
+};

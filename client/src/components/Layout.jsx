@@ -39,7 +39,7 @@ export default function Layout({ children }) {
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-white text-black">
+    <div className="flex min-h-screen flex-col bg-sheet text-ink transition-colors">
       <a
         href="#main"
         className="sr-only rounded-chip focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:bg-ink focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"

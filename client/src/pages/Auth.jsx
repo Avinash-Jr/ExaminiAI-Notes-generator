@@ -1,50 +1,43 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import { TfiMicrosoftAlt } from "react-icons/tfi";
-import { auth, provider } from "../utils/firebase.js";
+import { FiCheckCircle, FiArrowLeft, FiAlertCircle, FiShield } from "react-icons/fi";
 import { signInWithPopup } from "firebase/auth";
 import axios from "axios";
+import { auth, provider } from "../utils/firebase.js";
 import { serverUrl } from "../App.jsx";
 import { useDispatch } from "react-redux";
 import { setUserData } from "../redux/userSlice.js";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import logo from "../assets/logo.png";
+import ThemeToggle from "../components/ThemeToggle.jsx";
 
-/**
- * Turns whatever was thrown into a line the person in front of the screen can
- * act on. Returns null when there is genuinely nothing to report.
- */
 function describeAuthError(error) {
-  /* Closing the Google popup is a decision, not a failure. */
   if (
     error.code === "auth/popup-closed-by-user" ||
     error.code === "auth/cancelled-popup-request"
   ) {
     return null;
   }
-
   if (error.code === "auth/popup-blocked") {
-    return "Your browser blocked the Google popup. Allow popups for this site, then try again.";
+    return "Your browser blocked the Google popup. Please allow popups for this site, then try again.";
   }
-
-  /* The server answered, but not with a success. */
   if (error.response) {
     const detail =
-      error.response.data?.message || `status ${error.response.status}`;
-
-    return `Google accepted you, but signing in to ExaminAI failed — ${detail}.`;
+      error.response.data?.message ||
+      error.response.data?.error ||
+      `status ${error.response.status}`;
+    return `Signing in to ExaminAI failed: ${detail}`;
   }
-
-  /* The request left the browser and nothing came back. */
   if (error.request) {
-    return "Could not reach the ExaminAI server. Please try again.";
+    return "Could not reach the ExaminAI server. Please check your internet connection.";
   }
-
-  return error.message || "Something went wrong signing in. Please try again.";
+  return error.message || "An unexpected error occurred during sign-in. Please try again.";
 }
 
-function Auth() {
+export default function Auth() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -56,32 +49,19 @@ function Auth() {
     setPending(true);
 
     try {
-      console.log("🔵 Starting Google authentication...");
-
-      // 1. Firebase authentication
+      // 1. Firebase popup authentication
       const response = await signInWithPopup(auth, provider);
-
       const firebaseUser = response.user;
-
-      const name = firebaseUser.displayName || "User";
+      const name = firebaseUser.displayName || "Scholar";
       const email = firebaseUser.email;
-
-      console.log("✅ Firebase User:", {
-        name,
-        email,
-        uid: firebaseUser.uid,
-      });
 
       if (!email) {
         throw new Error("Google account did not return an email address.");
       }
 
-      // The ID token is what the backend verifies — never trust email/name alone.
       const idToken = await firebaseUser.getIdToken();
 
-      // 2. Send authenticated user to your backend
-      console.log("🔵 Sending user to backend...");
-
+      // 2. Exchange token with backend
       const result = await axios.post(
         `${serverUrl}/api/auth/googleAuth`,
         {
@@ -94,18 +74,6 @@ function Auth() {
         }
       );
 
-      console.log("✅ Backend response:", result.data);
-
-      /*
-       * Your backend might return:
-       *   { user: {...} }
-       * or
-       *   { userData: {...} }
-       * or directly:
-       *   {...user}
-       *
-       * Handle all common cases.
-       */
       const backendUser =
         result.data?.userData ||
         result.data?.user ||
@@ -115,268 +83,173 @@ function Auth() {
         throw new Error("Backend did not return user data.");
       }
 
-      // 3. Save logged-in user in Redux
+      // 3. Update Redux state
       dispatch(setUserData(backendUser));
 
-      console.log("✅ User saved to Redux:", backendUser);
-
-      /* Send them to the app. The /auth route also redirects on its own once
-         userData is set, but navigating here means the redirect no longer
-         depends on that guard staying in place. */
-      navigate("/", { replace: true });
-    } catch (error) {
-      console.error("❌ Google Authentication Error");
-
-      if (error.response) {
-        console.error("Status:", error.response.status);
-        console.error("Backend:", error.response.data);
-      } else if (error.request) {
-        console.error("No response from backend:", error.request);
-      } else {
-        console.error("Error:", error.message);
-      }
-
-      /* Without this the page sat there looking idle, which is exactly how a
-         failed sign-in used to look like "nothing happened". */
-      setError(describeAuthError(error));
+      // Navigate to authenticated workspace notes
+      navigate("/notes", { replace: true });
+    } catch (err) {
+      console.error("Authentication error:", err);
+      const message = describeAuthError(err);
+      if (message) setError(message);
     } finally {
       setPending(false);
     }
   };
 
   return (
-    <div className="min-h-screen overflow-hidden bg-amber-100 text-black px-6 sm:px-8">
-      {/* HEADER */}
-      <motion.header
-        initial={{ opacity: 0, y: -15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.5 }}
-        className="max-h-screen mt-11 overflow-hidden rounded-2xl p-6 bg-linear-to-br from-black via-gray-900 to-black border border-white/10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.35)]"
-        style={{ transformStyle: "preserve-3d" }}
-      >
-        <h1 className="text-xl sm:text-2xl font-bold bg-linear-to-r from-white via-gray-300 to-white bg-clip-text text-transparent">
-          ExaminiAI Notes Generator
-        </h1>
+    <div className="min-h-screen bg-sheet text-ink flex flex-col justify-between">
+      {/* Top micro-navigation */}
+      <header className="p-4 sm:p-6 flex items-center justify-between max-w-7xl mx-auto w-full">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-ink-2 hover:text-ink transition-colors"
+        >
+          <FiArrowLeft className="size-4" />
+          <span>Back to Home</span>
+        </Link>
+        <ThemeToggle className="h-9 w-9" />
+      </header>
 
-        <p className="mt-1 text-sm sm:text-base text-gray-300">
-          AI-powered exam notes & your personal revision buddy
-        </p>
-      </motion.header>
+      {/* Main Split Layout */}
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-10">
+        <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 rounded-3xl border border-line bg-surface shadow-float overflow-hidden">
+          {/* Left Hero Branding Pane */}
+          <div className="lg:col-span-6 bg-ink text-sheet p-8 sm:p-12 flex flex-col justify-between relative overflow-hidden">
+            <div className="pointer-events-none absolute -left-12 -top-12 h-64 w-64 rounded-full bg-brand/25 blur-3xl" />
+            <div className="pointer-events-none absolute right-0 bottom-0 h-48 w-48 rounded-full bg-amber-500/15 blur-2xl" />
 
-      {/* MAIN CONTENT */}
-      <main className="max-w-7xl mx-auto py-12 sm:py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-          {/* LEFT */}
-          <motion.div
-            initial={{ opacity: 0, x: -65 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 1 }}
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/10 border border-black/10 text-sm font-semibold mb-6">
-              ✨ Learn Smarter. Revise Faster.
-            </div>
-
-            <h2 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-[0.95] bg-linear-to-br from-black via-gray-700 to-black bg-clip-text text-transparent">
-              Turn Your
-              <br />
-              <span className="text-black">Study Material</span>
-              <br />
-              Into Smart AI Notes
-            </h2>
-
-            <p className="mt-6 max-w-2xl text-lg sm:text-xl font-medium text-gray-700 leading-relaxed">
-              Generate exam-ready notes, project documentation, charts,
-              summaries and downloadable PDFs — powered by AI and built for
-              students.
-            </p>
-
-            {/* LOGIN BUTTONS */}
-            <motion.button
-              type="button"
-              onClick={handleGoogleAuth}
-              disabled={pending}
-              aria-busy={pending}
-              whileHover={
-                pending
-                  ? undefined
-                  : {
-                      y: -10,
-                      rotateX: 8,
-                      rotateY: -8,
-                      scale: 1.07,
-                    }
-              }
-              transition={{
-                type: "spring",
-                stiffness: 200,
-                damping: 10,
-              }}
-              whileTap={pending ? undefined : { scale: 0.97 }}
-              className="mt-10 px-10 py-3 rounded-xl flex items-center gap-3 bg-white border border-black/10 font-semibold text-lg shadow-[0_25px_60px_rgba(0,0,0,0.25)] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <FcGoogle size={22} />
-
-              <span className="font-semibold text-xl text-black">
-                {pending ? "Signing you in…" : "Continue with Google"}
-              </span>
-            </motion.button>
-
-            <motion.button
-              type="button"
-              disabled
-              title="GitHub login coming soon"
-              whileHover={{
-                y: -3,
-              }}
-              className="mt-10 ml-3 px-10 py-3 rounded-xl flex items-center gap-3 bg-white border border-black/10 font-semibold text-lg shadow-[0_25px_60px_rgba(0,0,0,0.25)] opacity-50 cursor-not-allowed relative"
-            >
-              <FaGithub size={22} />
-
-              <span className="font-semibold text-xl text-black">
-                Continue with Github
-              </span>
-              <span className="absolute -top-2 -right-2 rounded-full bg-black px-2 py-0.5 text-[10px] font-bold text-white">Soon</span>
-            </motion.button>
-
-            <motion.button
-              type="button"
-              disabled
-              title="Microsoft login coming soon"
-              whileHover={{
-                y: -3,
-              }}
-              className="mt-10 ml-3 px-10 py-3 rounded-xl flex items-center gap-3 bg-white border border-black/10 font-semibold text-lg shadow-[0_25px_60px_rgba(0,0,0,0.25)] opacity-50 cursor-not-allowed relative"
-            >
-              <TfiMicrosoftAlt size={22} />
-
-              <span className="font-semibold text-xl text-black">
-                Continue with Microsoft
-              </span>
-              <span className="absolute -top-2 -right-2 rounded-full bg-black px-2 py-0.5 text-[10px] font-bold text-white">Soon</span>
-            </motion.button>
-
-            {/* SIGN-IN ERROR */}
-            {error ? (
-              <p
-                role="alert"
-                className="mt-8 max-w-xl rounded-2xl border border-red-900/25 bg-red-50 px-5 py-4 text-base font-medium text-red-900"
-              >
-                {error}
-              </p>
-            ) : null}
-
-            {/* CREDIT MESSAGE */}
-            <div className="mt-8 p-5 max-w-xl rounded-2xl bg-black/5 border border-black/10">
-              <p className="text-base sm:text-lg font-medium text-gray-800 leading-relaxed">
-                🎁 Get{" "}
-                <span className="font-bold text-black">
-                  100 FREE Credits
-                </span>{" "}
-                to create AI-powered notes, project documentation, charts,
-                graphs and clean PDFs instantly.
-              </p>
-
-              <p className="mt-3 text-sm text-gray-600">
-                Free to start • No payment required • Upgrade anytime
-              </p>
-            </div>
-          </motion.div>
-
-          {/* RIGHT */}
-          <motion.div
-            initial={{ opacity: 0, x: 65 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 1 }}
-          >
-            <div className="mb-6">
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-gray-600">
-                Why ExaminiAI?
-              </p>
-
-              <h3 className="mt-2 text-3xl sm:text-4xl font-extrabold">
-                Everything You Need to
-                <span className="block bg-linear-to-r from-gray-800 to-black bg-clip-text text-transparent">
-                  Study Smarter
+            <div className="relative z-10">
+              <Link to="/" className="inline-flex items-center gap-3">
+                <img
+                  src={logo}
+                  alt="ExaminAI Logo"
+                  className="h-10 w-10 rounded-xl object-cover border border-white/10"
+                />
+                <span className="text-xl font-bold text-display tracking-tight text-white">
+                  ExamNotes <span className="text-brand-lit">AI</span>
                 </span>
-              </h3>
+              </Link>
+
+              <div className="mt-12">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                  ⚡ Academic Grade Notes
+                </span>
+                <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-white text-display leading-tight">
+                  Turn hours of studying into minutes of mastery.
+                </h2>
+                <p className="mt-3 text-sm text-gray-300 leading-relaxed">
+                  Join scholars using ExaminAI to generate Cornell notes, formula cheatsheets, and exam revision guides with instant vector PDF export.
+                </p>
+              </div>
+
+              <div className="mt-8 space-y-3">
+                {[
+                  "100 free note credits on sign-up",
+                  "Diagrams, tables, and formula sheets",
+                  "Downloadable high-resolution PDFs",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-2.5 text-xs text-gray-200">
+                    <FiCheckCircle className="size-4 text-emerald-400 shrink-0" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <Feature
-                icon="🎁"
-                title="100 Free Credits"
-                des="Start instantly with 100 free credits and experience powerful AI note generation without paying."
-              />
-
-              <Feature
-                icon="🎯"
-                title="Exam-Ready Notes"
-                des="Generate high-yield, revision-friendly notes focused on the concepts that matter most."
-              />
-
-              <Feature
-                icon="🚀"
-                title="Project Documentation"
-                des="Create clean, professional documentation for assignments, projects and submissions in seconds."
-              />
-
-              <Feature
-                icon="⚡"
-                title="AI-Powered Learning"
-                des="Turn lengthy study material into clear, structured and easy-to-understand notes with AI."
-              />
-
-              <Feature
-                icon="📊"
-                title="Charts & Visuals"
-                des="Create structured charts, graphs and visual learning material to understand topics faster."
-              />
-
-              <Feature
-                icon="📥"
-                title="Save & Download"
-                des="Organize your notes and download polished PDFs whenever you need them for revision."
-              />
+            <div className="relative z-10 pt-8 mt-8 border-t border-white/10 text-xs text-gray-400 flex items-center justify-between">
+              <span>ExaminAI Cloud</span>
+              <span className="flex items-center gap-1">
+                <FiShield className="size-3.5 text-emerald-400" /> End-to-end encrypted
+              </span>
             </div>
-          </motion.div>
+          </div>
+
+          {/* Right Auth Card Pane */}
+          <div className="lg:col-span-6 p-8 sm:p-12 flex flex-col justify-center bg-sheet">
+            <div className="max-w-md w-full mx-auto">
+              <div className="mb-8">
+                <h3 className="text-2xl font-bold text-ink text-display">
+                  Welcome to ExaminAI
+                </h3>
+                <p className="text-xs sm:text-sm text-ink-3 mt-1.5">
+                  Sign in or create an account with Google to access your notes library.
+                </p>
+              </div>
+
+              {/* Error Alert */}
+              {error && (
+                <div className="mb-6 rounded-xl border border-danger-border bg-danger-soft p-3.5 text-xs text-danger flex items-start gap-2.5">
+                  <FiAlertCircle className="size-4 shrink-0 mt-0.5" />
+                  <span className="flex-1 font-medium">{error}</span>
+                </div>
+              )}
+
+              {/* Primary Google Login Button */}
+              <motion.button
+                type="button"
+                onClick={handleGoogleAuth}
+                disabled={pending}
+                whileHover={pending ? undefined : { scale: 1.01 }}
+                whileTap={pending ? undefined : { scale: 0.98 }}
+                className="w-full flex items-center justify-center gap-3 rounded-xl border border-line-firm bg-sheet py-3.5 px-4 text-sm font-semibold text-ink shadow-xs hover:bg-band hover:border-line-firm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FcGoogle className="size-5" />
+                <span>{pending ? "Signing you in..." : "Continue with Google"}</span>
+              </motion.button>
+
+              <div className="my-6 flex items-center gap-3">
+                <div className="flex-1 h-px bg-line" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                  Enterprise SSO
+                </span>
+                <div className="flex-1 h-px bg-line" />
+              </div>
+
+              {/* Secondary SSO Providers (Disabled Stubs) */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  disabled
+                  className="flex items-center justify-center gap-2 rounded-xl border border-line bg-band py-2.5 px-3 text-xs font-medium text-ink-3 opacity-60 cursor-not-allowed"
+                  title="GitHub SSO coming soon"
+                >
+                  <FaGithub className="size-4 text-ink-3" />
+                  <span>GitHub</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled
+                  className="flex items-center justify-center gap-2 rounded-xl border border-line bg-band py-2.5 px-3 text-xs font-medium text-ink-3 opacity-60 cursor-not-allowed"
+                  title="Microsoft Campus SSO coming soon"
+                >
+                  <TfiMicrosoftAlt className="size-4 text-ink-3" />
+                  <span>Microsoft</span>
+                </button>
+              </div>
+
+              {/* Privacy & Terms notice */}
+              <p className="mt-8 text-center text-[11px] text-ink-3 leading-relaxed">
+                By continuing, you agree to ExaminAI's{" "}
+                <Link to="/terms" className="underline hover:text-ink">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" className="underline hover:text-ink">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
+            </div>
+          </div>
         </div>
       </main>
+
+      {/* Footer copyright */}
+      <footer className="p-4 text-center text-xs text-ink-3">
+        © {new Date().getFullYear()} ExaminAI Inc. All rights reserved.
+      </footer>
     </div>
   );
 }
-
-function Feature({ icon, title, des }) {
-  return (
-    <motion.div
-      whileHover={{
-        y: -10,
-        rotateX: 8,
-        rotateY: -8,
-        scale: 1.07,
-      }}
-      transition={{
-        type: "spring",
-        stiffness: 400,
-        damping: 10,
-      }}
-      className="group relative overflow-hidden rounded-2xl p-6 bg-linear-to-br from-black via-gray-900 to-black border border-white/10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.35)]"
-      style={{ transformStyle: "preserve-3d" }}
-    >
-      <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity pointer-events-none" />
-
-      <div className="relative z-10 text-3xl mb-3">
-        {icon}
-      </div>
-
-      <h3 className="relative z-10 text-xl font-semibold mb-2">
-        {title}
-      </h3>
-
-      <p className="relative z-10 text-gray-300 text-sm leading-relaxed">
-        {des}
-      </p>
-    </motion.div>
-  );
-}
-
-export default Auth;

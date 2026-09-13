@@ -9,7 +9,6 @@ import {
   FiFile,
   FiCopy,
   FiCheck,
-  FiShield,
   FiList,
   FiSliders,
 } from "react-icons/fi";
@@ -82,8 +81,25 @@ const Notes = () => {
   }, []);
 
   useEffect(() => {
-    void fetchNotes();
-  }, [fetchNotes]);
+    let ignore = false;
+    getUserNotes()
+      .then((data) => {
+        if (!ignore) {
+          setNotes(Array.isArray(data) ? data : []);
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        if (!ignore) {
+          setError(e.response?.data?.error || e.message || "Failed to load notes.");
+          setNotes([]);
+          setLoading(false);
+        }
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const subjects = useMemo(() => {
     if (!notes) return [ALL];

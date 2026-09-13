@@ -1,10 +1,12 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useSelector, useDispatch } from "react-redux";
 import { BsPatchPlusFill } from "react-icons/bs";
+import { FiLayout } from "react-icons/fi";
 import logo from "../assets/logo.png";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { logout } from "../services/api.js";
+import ThemeToggle from "./ThemeToggle.jsx";
 
 function Navbar() {
   const { userData } = useSelector((state) => state.user);
@@ -34,15 +36,9 @@ function Navbar() {
   const credits = userData?.credits ?? 100;
 
   const handleLogout = async () => {
-    /* Close the menu first — it gives immediate feedback while the request is
-       still in flight, and once Redux clears this component is unmounted. */
     setShowProfile(false);
     setShowCredits(false);
-
-    /* Clearing the cookie and Redux lives in the shared helper. Two copies of
-       that logic is how the navbar and the settings page drift apart. */
     await logout(dispatch);
-
     navigate("/auth", { replace: true });
   };
 
@@ -50,221 +46,240 @@ function Navbar() {
     userData?.name?.trim()?.charAt(0)?.toUpperCase() || "U";
 
   return (
-    <motion.div
+    <motion.header
       initial={{ opacity: 0, y: -15 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 1.5 }}
+      transition={{ duration: 0.8 }}
       className="
-        relative z-20
-        mt-4 mx-4 sm:mt-6 sm:mx-6
+        sticky top-4 z-40
+        mx-4 sm:mx-6 lg:mx-auto lg:max-w-7xl
         rounded-2xl
-        bg-linear-to-br from-black/90 to-black/90
+        bg-black/90
         backdrop-blur-2xl
         border border-white/10
         shadow-[0_22px_55px_rgba(0,0,0,0.75)]
         flex items-center justify-between gap-3
-        px-4 py-3 sm:px-8 sm:py-4
+        px-4 py-3 sm:px-6 sm:py-3.5
       "
     >
-      {/* Logo. `min-w-0` lets the wordmark truncate instead of shoving the
-          credits pill off the right edge of a phone. */}
-      <Link to="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
+      {/* Logo */}
+      <Link to="/" className="flex min-w-0 items-center gap-2 sm:gap-3 group">
         <img
           src={logo}
           alt="ExamNotes AI logo"
           className="
-            w-9 h-9 sm:w-11 sm:h-11
+            w-9 h-9 sm:w-10 sm:h-10
             shrink-0
             rounded-xl
             object-cover
             border border-white/10
             shadow-lg
+            group-hover:scale-105
+            transition-transform
           "
         />
 
-        <span className="truncate text-base sm:text-2xl text-gray-300 font-bold">
-          ExamNotes{" "}
-          <span className="text-amber-100">AI</span>
+        <span className="truncate text-base sm:text-xl text-gray-200 font-bold tracking-tight">
+          ExamNotes <span className="text-amber-300">AI</span>
         </span>
       </Link>
 
-      {/* Right side */}
-      <div className="flex shrink-0 items-center gap-3 sm:gap-6 relative">
-        {/* Credits */}
-        <div className="relative" ref={creditsRef}>
-          <motion.div
-            onClick={() => {
-              setShowCredits((prev) => !prev);
-              setShowProfile(false);
-            }}
-            whileHover={{ scale: 1.07 }}
-            whileTap={{ scale: 1.01 }}
-            className="
-              flex items-center justify-center
-              gap-1.5 sm:gap-2
-              px-3 py-1.5 sm:px-4 sm:py-2
-              rounded-xl
-              bg-white/10
-              border border-white/20
-              text-white
-              text-sm
-              shadow-md
-              cursor-pointer
-              transition-colors
-              hover:bg-white/15
-            "
-          >
-            <span className="text-base sm:text-xl">💎</span>
+      {/* Mid navigation links (marketing) */}
+      <nav className="hidden md:flex items-center gap-6 text-sm text-gray-300 font-medium">
+        <Link to="/#features" className="hover:text-white transition-colors">
+          Features
+        </Link>
+        <Link to="/pricing" className="hover:text-white transition-colors">
+          Pricing
+        </Link>
+        <Link to="/about" className="hover:text-white transition-colors">
+          About
+        </Link>
+        <Link to="/contact" className="hover:text-white transition-colors">
+          Contact
+        </Link>
+      </nav>
 
-            <span className="font-semibold">
-              {credits}
-            </span>
+      {/* Right side controls */}
+      <div className="flex shrink-0 items-center gap-2.5 sm:gap-4 relative">
+        <ThemeToggle className="text-white border-white/10 bg-white/5 hover:bg-white/10" />
 
-            <motion.span
-              whileHover={{ scale: 1.2 }}
-              whileTap={{ scale: 0.99 }}
-              className="hidden text-base sm:inline-block sm:text-xl"
+        {userData ? (
+          <>
+            {/* Go to workspace dashboard link */}
+            <Link
+              to="/notes"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-white/10 border border-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 transition-all"
             >
-              <BsPatchPlusFill />
-            </motion.span>
-          </motion.div>
+              <FiLayout className="size-3.5 text-amber-300" />
+              <span>Workspace</span>
+            </Link>
 
-          <AnimatePresence>
-            {showCredits && (
+            {/* Credits pill */}
+            <div className="relative" ref={creditsRef}>
               <motion.div
-                initial={{
-                  opacity: 0,
-                  y: -10,
-                  scale: 0.95,
+                onClick={() => {
+                  setShowCredits((prev) => !prev);
+                  setShowProfile(false);
                 }}
-                animate={{
-                  opacity: 1,
-                  y: 10,
-                  scale: 1,
-                }}
-                exit={{
-                  opacity: 0,
-                  y: -10,
-                  scale: 0.95,
-                }}
-                transition={{ duration: 0.3 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
                 className="
-                  absolute right-0 mt-4
-                  w-64 max-w-[calc(100vw-3rem)]
-                  rounded-2xl
-                  bg-black/90
-                  backdrop-blur-xl
-                  border border-white/10
-                  shadow-[0_25px_60px_rgba(0,0,0,0.7)]
-                  p-4 text-white
+                  flex items-center justify-center
+                  gap-1.5 sm:gap-2
+                  px-3 py-1.5 sm:px-3.5 sm:py-1.5
+                  rounded-xl
+                  bg-white/10
+                  border border-white/20
+                  text-white
+                  text-xs sm:text-sm
+                  shadow-md
+                  cursor-pointer
+                  transition-colors
+                  hover:bg-white/15
                 "
               >
-                <h4 className="text-xl sm:text-2xl">
-                  Buy Credits
-                </h4>
-
-                <p className="text-base sm:text-lg text-gray-400 mb-4">
-                  Use Credits to generate AI Notes, Diagrams & PDFs
-                </p>
-
-                <button
-                  onClick={() => {setShowCredits(false); navigate("/pricing")}}
-                  className="
-                    w-full py-3 sm:py-4 rounded-lg
-                    bg-linear-to-br from-white to-pink-300/90
-                    text-black font-semibold
-                  "
-                >
-                  Buy More Credits
-                </button>
+                <span className="text-sm sm:text-base">💎</span>
+                <span className="font-semibold">{credits}</span>
+                <span className="hidden sm:inline-block text-amber-300">
+                  <BsPatchPlusFill />
+                </span>
               </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
 
-        {/* Profile */}
-        <div className="relative" ref={profileRef}>
-          <motion.div
-            onClick={() => {
-              setShowProfile((prev) => !prev);
-              setShowCredits(false);
-            }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 1.01 }}
-            className="
-              flex items-center justify-center
-              gap-1 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full
-              bg-white/10
-              border border-white/20
-              text-white text-sm
-              shadow-md cursor-pointer
-            "
-          >
-            <span className="text-lg font-bold">
-              {firstLetter}
-            </span>
-          </motion.div>
+              <AnimatePresence>
+                {showCredits && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 10, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className="
+                      absolute right-0 mt-3
+                      w-64 max-w-[calc(100vw-3rem)]
+                      rounded-2xl
+                      bg-neutral-950
+                      border border-white/15
+                      shadow-[0_25px_60px_rgba(0,0,0,0.85)]
+                      p-4 text-white z-50
+                    "
+                  >
+                    <h4 className="text-lg font-bold">Credit Balance</h4>
+                    <p className="text-xs text-gray-400 mt-1 mb-4">
+                      Each AI generation uses credits for analysis, summaries & diagram generation.
+                    </p>
+                    <button
+                      onClick={() => { setShowCredits(false); navigate("/pricing"); }}
+                      className="
+                        w-full py-2.5 rounded-xl
+                        bg-amber-400 hover:bg-amber-300
+                        text-black font-semibold text-xs tracking-wide
+                        transition-colors
+                      "
+                    >
+                      Top Up Credits →
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
-          {/* A sibling of the avatar, not a child. Nested inside it, the menu
-              inherited the avatar's hover scale, and every click in the menu
-              bubbled back to the toggle — reopening what you just chose. */}
-          <AnimatePresence>
-            {showProfile && (
+            {/* Profile Avatar & Dropdown */}
+            <div className="relative" ref={profileRef}>
               <motion.div
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 10, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
+                onClick={() => {
+                  setShowProfile((prev) => !prev);
+                  setShowCredits(false);
+                }}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.98 }}
                 className="
-                  absolute right-0 top-full mt-4
-                  w-52 max-w-[calc(100vw-3rem)] rounded-2xl
-                  bg-black/90
-                  backdrop-blur-xl
-                  border border-white/10
-                  shadow-[0_25px_60px_rgba(0,0,0,0.7)]
-                  p-4 text-white
+                  flex items-center justify-center
+                  h-8 w-8 sm:h-9 sm:w-9 rounded-full
+                  bg-amber-400/20 border border-amber-400/30
+                  text-amber-300 text-xs sm:text-sm font-bold
+                  cursor-pointer shadow-md
                 "
               >
-                <MenuItem text="History" onClick={() => {setShowProfile(false); navigate("/history")}}/>
-
-                <MenuItem text="Settings" onClick={() => { setShowProfile(false); navigate("/settings") }}/>
-
-                <MenuItem text="Logout" red onClick={handleLogout}/>
+                {firstLetter}
               </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+
+              <AnimatePresence>
+                {showProfile && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 10, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className="
+                      absolute right-0 top-full mt-3
+                      w-52 max-w-[calc(100vw-3rem)] rounded-2xl
+                      bg-neutral-950
+                      border border-white/15
+                      shadow-[0_25px_60px_rgba(0,0,0,0.85)]
+                      p-2 text-white z-50
+                    "
+                  >
+                    <div className="px-3 py-2 border-b border-white/10 mb-1">
+                      <p className="text-xs font-semibold text-gray-200 truncate">
+                        {userData?.name || "Scholar"}
+                      </p>
+                      <p className="text-[11px] text-gray-400 truncate">
+                        {userData?.email}
+                      </p>
+                    </div>
+
+                    <MenuItem
+                      text="Notes Library"
+                      onClick={() => { setShowProfile(false); navigate("/notes"); }}
+                    />
+                    <MenuItem
+                      text="Activity History"
+                      onClick={() => { setShowProfile(false); navigate("/history"); }}
+                    />
+                    <MenuItem
+                      text="Account Settings"
+                      onClick={() => { setShowProfile(false); navigate("/settings"); }}
+                    />
+                    <div className="my-1 border-t border-white/10" />
+                    <MenuItem text="Sign Out" red onClick={handleLogout} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Link
+              to="/auth"
+              className="text-xs sm:text-sm font-medium text-gray-300 hover:text-white px-3 py-1.5 transition-colors"
+            >
+              Sign in
+            </Link>
+            <Link
+              to="/auth"
+              className="rounded-xl bg-amber-400 hover:bg-amber-300 text-black text-xs sm:text-sm font-semibold px-3.5 py-1.5 transition-colors shadow-sm"
+            >
+              Get Started
+            </Link>
+          </div>
+        )}
       </div>
-    </motion.div>
+    </motion.header>
   );
 }
 
-function MenuItem({
-  onClick,
-  text,
-  red = false,
-}) {
+function MenuItem({ onClick, text, red = false }) {
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
       className={`
-        w-full
-        text-left
-        px-5
-        py-3
-        text-sm
-        transition-colors
-        rounded-lg
-        cursor-pointer
-        ${
-          red
-            ? "text-red-400 hover:bg-red-500/10"
-            : "text-gray-200 hover:bg-white/10"
-        }
+        w-full text-left px-3 py-2 text-xs transition-colors rounded-lg
+        ${red ? "text-red-400 hover:bg-red-500/10 font-medium" : "text-gray-200 hover:bg-white/10"}
       `}
     >
       {text}
-    </div>
+    </button>
   );
 }
 

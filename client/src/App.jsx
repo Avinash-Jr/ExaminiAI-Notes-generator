@@ -10,6 +10,7 @@ import Pricing from './pages/Pricing.jsx'
 import History from './pages/History.jsx'
 import Contact from './pages/Contact.jsx'
 import Layout from './components/Layout.jsx'
+import AppShell from './components/AppShell/AppShell.jsx'
 import Notes from './pages/Notes.jsx'
 import About from './pages/About.jsx'
 import Terms from './pages/Terms.jsx'
@@ -19,16 +20,12 @@ import TopicForm from './pages/TopicForm.jsx'
 import Payment from './pages/Payment.jsx'
 import NotFound from './pages/NotFound.jsx'
 
-
 const App = () => {
   const dispatch = useDispatch()
-  const { userData } = useSelector((state) => state.user) // userData is the data that is stored in the redux store
+  const { userData } = useSelector((state) => state.user)
 
-  // Important: don't redirect to /auth before checking the existing cookie.
   const [authLoading, setAuthLoading] = useState(true);
 
-  // One call only — this used to run in a second effect as well, which fired
-  // two /currentuser requests and two dispatches on every mount.
   useEffect(() => {
     const checkUser = async () => {
       try {
@@ -45,41 +42,32 @@ const App = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-amber-100">
-        <div className="text-xl font-semibold">Checking authentication...</div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-sheet text-ink gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+        <div className="text-sm font-medium text-ink-2 tracking-wide">Initializing ExaminAI...</div>
       </div>
     );
   }
 
   return (
     <Routes>
-            <Route path='/' element = {<Home/>}/>
-      {/* <Route path='/' element = {userData?<Home/>: <Navigate to = "/auth"/> }/>  // for redirecting to the auth page */}
-      <Route path='/auth' element = {userData ? <Navigate to = "/" replace/> : <Auth/>} />
-      <Route path='/pricing' element = {<Pricing/>} />
+      <Route path='/' element={<Home />} />
+      <Route path='/auth' element={userData ? <Navigate to="/notes" replace /> : <Auth />} />
+      <Route path='/pricing' element={<Pricing />} />
 
-      {/* Content pages share the Layout shell: header, page nav, footer.
-          History and Contact used to redirect signed-in users away, which made
-          them unreachable for everyone who was logged in — that guard is gone. */}
+      {/* Public informational pages share the marketing Layout shell */}
       <Route element={<Layout />}>
         <Route path='/about' element={<About />} />
         <Route path='/contact' element={<Contact />} />
         <Route path='/terms' element={<Terms />} />
         <Route path='/privacy' element={<Privacy />} />
+      </Route>
 
-        {/* Notes and History show one account's own content, so gate them once
-            auth is switched back on above:
-            element={userData ? <Notes/> : <Navigate to="/auth" replace/>} */}
+      {/* Authenticated / Workspace pages share the AppShell dashboard */}
+      <Route element={<AppShell />}>
         <Route path='/notes' element={<Notes />} />
         <Route path='/history' element={<History />} />
-
-        {/* Settings needs no guard here: it renders its own "sign in first"
-            state, which keeps the URL working when someone arrives from a
-            bookmark with an expired cookie. */}
         <Route path='/settings' element={<Settings />} />
-
-        {/* The brief arrives here in router state from the generate dialog. The
-            page handles arriving without one, so the URL stays shareable. */}
         <Route path='/topic-form' element={<TopicForm />} />
         <Route path='/payment' element={<Payment />} />
       </Route>

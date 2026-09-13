@@ -25,14 +25,37 @@ if (missingEnv.length) {
 }
 
 const PORT = process.env.PORT || 5000;
-const IS_PROD = process.env.NODE_ENV === "production";
-const ALLOWED_ORIGIN = process.env.CLIENT_URL || "http://localhost:5173";
+const IS_PROD = process.env.NODE_ENV === "production" || Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RENDER);
+
+// Origins permitted to access the API with credentials
+const defaultAllowedOrigins = [
+    "https://examini-ai-notes-generator.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:5173",
+];
+
+const envOrigins = (process.env.CLIENT_URL || "")
+    .split(",")
+    .map((o) => o.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+
+const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envOrigins]));
 
 const app = express();
 app.disable("x-powered-by");
 
 // Trust proxy in production (Render, Railway, etc. sit behind a reverse proxy)
 if (IS_PROD) app.set("trust proxy", 1);
+
+// Normalize leading duplicate slashes (e.g., //api/auth -> /api/auth)
+app.use((req, res, next) => {
+    if (req.url.startsWith("//")) {
+        req.url = req.url.replace(/^\/+/, "/");
+    }
+    next();
+});
 
 // Minimal security headers (dependency-free). For full coverage, install `helmet`.
 app.use((req, res, next) => {
@@ -48,13 +71,32 @@ app.use((req, res, next) => {
 });
 
 // CORS configuration - must come BEFORE routes
-app.use(
-    cors({
-        origin: ALLOWED_ORIGIN,
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    })
-);
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
+        if (!origin) return callback(null, true);
+
+        const cleanOrigin = origin.replace(/\/+$/, "");
+        const isAllowed =
+            allowedOrigins.includes(cleanOrigin) ||
+            /^https:\/\/examini-ai-notes-generator.*\.vercel\.app$/.test(cleanOrigin);
+
+        if (isAllowed) {
+            return callback(null, true);
+        }
+
+        console.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
+        return callback(null, false);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "X-Idempotency-Key"],
+    exposedHeaders: ["Set-Cookie"],
+    optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 // Cap JSON body size to blunt trivial DoS via oversized payloads.
 app.use(express.json({ limit: "1mb" }));

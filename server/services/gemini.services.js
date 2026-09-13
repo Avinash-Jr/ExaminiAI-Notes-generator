@@ -70,6 +70,9 @@ export const generateGeminiContent = async (prompt) => {
               temperature: 0.3,
               topP: 0.9,
               maxOutputTokens: 16384,
+              thinkingConfig: {
+                thinkingBudget: 0,
+              },
             },
           }),
           signal: controller.signal,
